@@ -79,27 +79,34 @@ Version Control : Git, GitHub
 
 **INSTALLATION AND SETUP**
 
-PRE-REQUISITES
-Node.js
-BACKEND SETUP
-npm install(creates .env using .env.example)
-node server.js
-FRONTEND SETUP
-npm install
-npm start
-                 STAFF LOGIN CREDENTIALS
-Staff ID – doctor123
-Password – securepass
-                 NURSE LOGIN CREDENTIALS
-Nurse ID - nurse123
-Password - pass123
-      PATIENT LOGIN CREDENTIALS
-Patient 1
-Patient ID - ID001
-Password - ID001
-Patient 2
-Patient ID - ID002
-Password - ID002
-Patient 3
-Patient ID - ID003
-Password - ID003
+## PRE-REQUISITES
+- Node.js
+
+## BACKEND SETUP
+- `npm install` (creates `.env` using `.env.example`)
+- `node server.js`
+
+## FRONTEND SETUP
+- `npm install`
+- `npm start`
+
+## STAFF LOGIN CREDENTIALS
+- **Staff ID**: `doctor123`
+- **Password**: `securepass`
+
+## NURSE LOGIN CREDENTIALS
+- **Nurse ID**: `nurse123`
+- **Password**: `pass123`
+
+## PATIENT LOGIN CREDENTIALS
+### Patient 1
+- **Patient ID**: `ID001`
+- **Password**: `ID001`
+
+### Patient 2
+- **Patient ID**: `ID002`
+- **Password**: `ID002`
+
+### Patient 3
+- **Patient ID**: `ID003`
+- **Password**: `ID003`
