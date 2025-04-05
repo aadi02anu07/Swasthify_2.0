@@ -1,4 +1,4 @@
-Swasthify – Smart Healthcare Monitoring for Underserved Communities
+#Swasthify – Smart Healthcare Monitoring for Underserved Communities
 
 A real-time patient health monitoring system designed to empower frontline healthcare workers and provide remote relatives with seamless access to live health updates, ensuring continuous care and peace of mind from anywhere in the world.
 Live Links Of The Following:
