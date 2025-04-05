@@ -11,10 +11,12 @@ Tech Stack
 Folder Structure
 Installation
 
-**OVERVIEW:**
+**OVERVIEW**
+
 Swasthify is an advanced web application designed to facilitate real-time health monitoring for underserved communities. It enables doctors and nurses to securely record and update patient vitals, while providing remote relatives with seamless access to live health data using a unique patient ID. With an intuitive interface and structured data management, Swasthify ensures efficient patient tracking, enhances medical oversight, and fosters better communication between healthcare providers and families—anytime, anywhere.
 
 **FEATURES**
+
 Role-based access: Doctors/Nurses vs Relatives
 Add & View vital signs: BP, Sugar, Heart Rate
 Unique Patient ID for secure access
@@ -22,12 +24,14 @@ Clean UI with calming colors and smooth animations
 Real-time updates for relatives
 
 **TECH-STACK**
+
 Frontend : React.js, HTML , CSS , Bootstrap
 Backend : Node.js, Express.js, MongoDB  
 Deployment :Vercel (Frontend), Railway (Backend)  
 Version Control : Git, GitHub
 
 **FOLDER STRUCTURE**
+
 📦 Swasthify  
 ├── 📁 healthcare-backend  
 │   ├── 📁 models  
@@ -74,6 +78,7 @@ Version Control : Git, GitHub
 
 
 **INSTALLATION AND SETUP**
+
 PRE-REQUISITES
 Node.js
 BACKEND SETUP
