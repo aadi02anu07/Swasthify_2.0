@@ -1,0 +1,20 @@
+.navbar {
+    background-color: #ffffff;
+    padding: 10px;
+    display: flex;
+    justify-content: center; /* Centers the logo */
+    align-items: center;
+    height: 80px; /* Ensure proper navbar height */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  
+  .logo {
+    width: 170px; /* Adjust logo size */
+    height: auto;
+    cursor: pointer;
+  }
+  

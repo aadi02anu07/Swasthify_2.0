@@ -1,0 +1,84 @@
+/* From Uiverse.io by cssbuttons-io */ 
+.home-button {
+  background-color: white;
+  --color: #2db882;
+  font-family: inherit;
+  display: inline-block;
+  width: 8em;
+  height: 2.6em;
+  line-height: 2.5em;
+  margin: 20px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid var(--color);
+  transition: color 0.5s;
+  z-index: 1;
+  font-size: 17px;
+  border-radius: 6px;
+  font-weight: 500;
+  color: var(--color);
+}
+
+.home-button:before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  background: var(--color);
+  height: 150px;
+  width: 200px;
+  border-radius: 50%;
+}
+
+.home-button:hover {
+  color: #fff;
+}
+
+.home-button:before {
+  top: 100%;
+  left: 100%;
+  transition: all 0.7s;
+}
+
+.home-button:hover:before {
+  top: -30px;
+  left: -30px;
+}
+
+.home-button:active:before {
+  background: #3a0ca3;
+  transition: background 0s;
+}
+
+.button-group a {
+  text-decoration: none;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.login-button {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  padding: 30px;
+  font-weight: bold;
+  background: linear-gradient(45deg, rgb(16, 137, 211) 0%, rgb(18, 177, 209) 100%);
+  color: white;
+  padding-block: 15px;
+  margin: 20px auto;
+  border-radius: 20px;
+  box-shadow: rgba(133, 189, 215, 0.878) 0px 20px 10px -15px;
+  border: none;
+  transition: all 0.2s ease-in-out;
+  font-size: 16px;
+}
+
+.login-button:hover {
+  transform: scale(1.03);
+  box-shadow: rgba(16, 137, 211, 0.6) 0px 20px 15px -10px;
+}
