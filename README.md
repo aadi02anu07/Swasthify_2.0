@@ -92,6 +92,8 @@ With an intuitive interface and structured data management, Swasthify ensures ef
 │   └── package-lock.json  
 └ readme.md
 
+---
+
 ## ⚙️ INSTALLATION AND SETUP
 
 ### ✅ Pre-requisites
@@ -108,12 +110,9 @@ With an intuitive interface and structured data management, Swasthify ensures ef
 ---
 
 ## 👨‍⚕️ STAFF LOGIN CREDENTIALS
-- **Staff ID**: `doctor123`
+- **Doctor ID**: `doctor123`
 - **Password**: `securepass`
 
----
-
-## 👩‍⚕️ NURSE LOGIN CREDENTIALS
 - **Nurse ID**: `nurse123`
 - **Password**: `pass123`
 
