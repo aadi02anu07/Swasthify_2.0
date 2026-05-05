@@ -1,46 +1,34 @@
 require("dotenv").config();
 const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
+const cors    = require("cors");
 
-// Import Routes
-const authRoutes = require("./routes/authRoutes");
+const connectDB     = require("./db/db");
+const authRoutes    = require("./routes/authRoutes");
 const patientRoutes = require("./routes/patientRoutes");
+const errorHandler  = require("./middleware/errorHandler");
 
 const app = express();
 
-// Middleware
+// ── Core Middleware ──────────────────────────────────────────────────────────
 app.use(express.json());
-app.use(cors({ origin: "*" })); // ✅ Allow all origins for now
+app.use(cors({ origin: "*" }));
 
-// ✅ Connect to MongoDB Atlas
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB Connected Successfully"))
-  .catch((err) => {
-    console.error("❌ MongoDB Connection Error:", err.message);
-    process.exit(1);
-  });
+// ── Database ─────────────────────────────────────────────────────────────────
+connectDB();
 
-// ✅ Define Routes
-app.use("/api/auth", authRoutes);
+// ── Routes ────────────────────────────────────────────────────────────────────
+app.use("/api/auth",     authRoutes);
 app.use("/api/patients", patientRoutes);
 
-// ✅ Test API Route
-app.get("/", (req, res) => {
-  res.status(200).send("🚀 API is working on Railway!");
-});
+// ── Health Check ─────────────────────────────────────────────────────────────
+app.get("/", (req, res) => res.status(200).send("🚀 Swasthify API is running!"));
 
-// ✅ 404 Handler for Undefined Routes
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
+// ── 404 ───────────────────────────────────────────────────────────────────────
+app.use((req, res) => res.status(404).json({ error: "Route not found" }));
 
-// ✅ Start Server (Use Railway’s PORT)
+// ── Global Error Handler (must be last) ──────────────────────────────────────
+app.use(errorHandler);
+
+// ── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
