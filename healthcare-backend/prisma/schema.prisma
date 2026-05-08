@@ -1,0 +1,189 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Swasthify — Prisma Schema
+// Multi-hospital, patient-centric health record network
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────────
+
+enum StaffRole {
+  doctor
+  nurse
+  admin
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+enum MedicalRecordType {
+  diagnosis
+  surgery
+  allergy
+  medication
+  lab_result
+  vaccination
+  imaging
+}
+
+// ── Hospital ─────────────────────────────────────────────────────────────────
+// Each registered institution is a tenant in the system.
+// Staff belong to a hospital; patient records are shared across all hospitals.
+
+model Hospital {
+  id               String   @id @default(uuid())
+  name             String
+  registrationCode String   @unique  // unique code used during staff signup
+  city             String
+  state            String
+  phone            String?
+  email            String?
+  verified         Boolean  @default(false)
+  passwordHash     String                        // hospital-admin login
+  createdAt        DateTime @default(now())
+
+  staff          Staff[]
+  vitalsHistory  VitalsHistory[]
+  medicalHistory MedicalHistory[]
+  appointments   Appointment[]
+
+  @@map("hospitals")
+}
+
+// ── Staff ────────────────────────────────────────────────────────────────────
+// Doctors, nurses, and admins — each tied to exactly one hospital.
+// Role controls what they can do (enforced in middleware).
+
+model Staff {
+  id           String    @id @default(uuid())
+  staffID      String    @unique
+  name         String
+  role         StaffRole
+  passwordHash String
+  hospitalId   String
+  createdAt    DateTime  @default(now())
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+
+  vitalsRecorded  VitalsHistory[]
+  medicalRecorded MedicalHistory[]
+  appointments    Appointment[]
+
+  @@index([hospitalId])
+  @@map("staff")
+}
+
+// ── Patient ──────────────────────────────────────────────────────────────────
+// One record per real-world person — not duplicated per hospital.
+// Any verified hospital's staff can READ; only the creating hospital can WRITE.
+
+model Patient {
+  id           String    @id @default(uuid())
+  patientID    String    @unique   // human-readable ID (e.g. PAT-2024-0001)
+  name         String
+  dob          DateTime
+  bloodGroup   String?
+  gender       String?
+  phone        String?
+  emergencyContact String?
+  passwordHash String
+  createdAt    DateTime  @default(now())
+
+  vitalsHistory  VitalsHistory[]
+  medicalHistory MedicalHistory[]
+  appointments   Appointment[]
+
+  @@map("patients")
+}
+
+// ── Vitals History ───────────────────────────────────────────────────────────
+// Append-only. Never update a past reading — always insert a new one.
+// This gives us the time-series data needed for graphs.
+
+model VitalsHistory {
+  id           String   @id @default(uuid())
+  patientId    String
+  hospitalId   String
+  recordedById String
+
+  // Core vitals
+  bpSystolic   Int               // e.g. 120  (stored separately for querying)
+  bpDiastolic  Int               // e.g. 80
+  heartRate    Int               // bpm
+  sugar        Float             // mg/dL
+  weight       Float?            // kg
+  spo2         Float?            // % oxygen saturation
+  temperature  Float?            // °C
+
+  notes        String?
+  recordedAt   DateTime @default(now())
+
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+  recordedBy Staff    @relation(fields: [recordedById], references: [id])
+
+  // Composite index: fast time-series queries per patient
+  @@index([patientId, recordedAt])
+  @@map("vitals_history")
+}
+
+// ── Medical History ──────────────────────────────────────────────────────────
+// Structured records: diagnoses, surgeries, allergies, medications, labs, etc.
+// occurredAt = when it happened; recordedAt = when it was entered into system.
+
+model MedicalHistory {
+  id            String            @id @default(uuid())
+  patientId     String
+  hospitalId    String
+  recordedById  String
+
+  title         String
+  description   String
+  type          MedicalRecordType
+  attachmentUrl String?           // for lab reports, imaging, scans
+  severity      String?           // mild | moderate | severe (optional)
+  occurredAt    DateTime          // actual date of event
+  recordedAt    DateTime          @default(now())
+
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
+  recordedBy Staff    @relation(fields: [recordedById], references: [id])
+
+  @@index([patientId, occurredAt])
+  @@index([patientId, type])
+  @@map("medical_history")
+}
+
+// ── Appointments ─────────────────────────────────────────────────────────────
+
+model Appointment {
+  id          String            @id @default(uuid())
+  patientId   String
+  hospitalId  String
+  staffId     String
+
+  scheduledAt DateTime
+  status      AppointmentStatus @default(pending)
+  reason      String?
+  notes       String?           // doctor's notes post-appointment
+  createdAt   DateTime          @default(now())
+
+  patient  Patient  @relation(fields: [patientId], references: [id])
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+  staff    Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([patientId, scheduledAt])
+  @@index([staffId, scheduledAt])
+  @@map("appointments")
+}
