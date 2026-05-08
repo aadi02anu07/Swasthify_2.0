@@ -1,4 +1,4 @@
-const patientService = require("../services/patientService");
+const patientService = require("../services/patientAuthService");
 
 const addPatient = async (req, res, next) => {
   try {

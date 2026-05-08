@@ -1,48 +1,93 @@
-const jwt = require("jsonwebtoken");
+const { verifyAccessToken } = require("../utils/jwt");
 
 /**
- * verifyToken
- * Checks that the request carries a valid JWT.
- * Attaches the decoded payload to req.user for downstream use.
+ * Verifies the JWT access token from the Authorization header.
+ * Attaches decoded payload to req.user.
+ *
+ * Token payload shape:
+ *   Staff:    { id, type: "staff",    role: "doctor"|"nurse"|"admin", hospitalId, name }
+ *   Patient:  { id, type: "patient",  patientID, name }
+ *   Hospital: { id, type: "hospital", name }
  */
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
-
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Access denied. No token provided." });
+    return res.status(401).json({ error: "Access token required." });
   }
 
   const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;  // { id, staffID/patientID, role, type }
+    req.user = verifyAccessToken(token);
     next();
   } catch (err) {
-    return res.status(401).json({ error: "Invalid or expired token." });
+    return res.status(401).json({ error: "Invalid or expired access token." });
   }
 };
 
-/**
- * staffOnly
- * Use after verifyToken. Blocks patients from staff-only routes.
- */
+// ── Role Guards ───────────────────────────────────────────────────────────────
+
+/** Any staff member (doctor, nurse, admin) */
 const staffOnly = (req, res, next) => {
   if (req.user?.type !== "staff") {
-    return res.status(403).json({ error: "Access denied. Staff only." });
+    return res.status(403).json({ error: "Staff access only." });
+  }
+  next();
+};
+
+/** Doctors only */
+const doctorOnly = (req, res, next) => {
+  if (req.user?.type !== "staff" || req.user?.role !== "doctor") {
+    return res.status(403).json({ error: "Doctor access only." });
+  }
+  next();
+};
+
+/** Nurses and doctors (clinical staff) */
+const clinicalStaffOnly = (req, res, next) => {
+  const role = req.user?.role;
+  if (req.user?.type !== "staff" || !["doctor", "nurse"].includes(role)) {
+    return res.status(403).json({ error: "Clinical staff access only." });
+  }
+  next();
+};
+
+/** Hospital admin (staff with role=admin OR hospital-level token) */
+const hospitalAdminOnly = (req, res, next) => {
+  const isHospitalAccount = req.user?.type === "hospital";
+  const isAdminStaff      = req.user?.type === "staff" && req.user?.role === "admin";
+  if (!isHospitalAccount && !isAdminStaff) {
+    return res.status(403).json({ error: "Hospital admin access only." });
+  }
+  next();
+};
+
+/** Patients only */
+const patientOnly = (req, res, next) => {
+  if (req.user?.type !== "patient") {
+    return res.status(403).json({ error: "Patient access only." });
   }
   next();
 };
 
 /**
- * doctorOnly
- * Use after verifyToken. Restricts to doctors only (e.g. delete patient).
+ * Staff can only act within their own hospital.
+ * Pass this AFTER verifyToken + staffOnly.
+ * Usage: route param must be :hospitalId
  */
-const doctorOnly = (req, res, next) => {
-  if (req.user?.role !== "doctor") {
-    return res.status(403).json({ error: "Access denied. Doctors only." });
+const sameHospitalOnly = (req, res, next) => {
+  if (req.user?.type === "hospital") return next(); // hospital-level token passes
+  if (req.user?.hospitalId !== req.params.hospitalId) {
+    return res.status(403).json({ error: "You can only access records within your hospital." });
   }
   next();
 };
 
-module.exports = { verifyToken, staffOnly, doctorOnly };
+module.exports = {
+  verifyToken,
+  staffOnly,
+  doctorOnly,
+  clinicalStaffOnly,
+  hospitalAdminOnly,
+  patientOnly,
+  sameHospitalOnly,
+};
