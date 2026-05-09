@@ -1,44 +1,48 @@
 const vitalsService = require("../services/vitalsService");
+const notifier      = require("../socket/notifier");
 
 /**
  * POST /api/patients/:patientID/vitals
- * Clinical staff records a new vitals reading.
- * Emits real-time update via Socket.IO to anyone watching this patient's room.
  */
 const recordVitals = async (req, res, next) => {
   try {
     const { patientID } = req.params;
-    const staffId    = req.user.id;
-    const hospitalId = req.user.hospitalId;
+    const staffId       = req.user.id;
+    const hospitalId    = req.user.hospitalId;
 
     const { reading, alerts, patient } = await vitalsService.recordVitals(
       patientID, staffId, hospitalId, req.body
     );
 
-    // Push live update to all connected clients watching this patient
     const io = req.app.get("io");
-    io.to(`patient:${patientID}`).emit("vitals:new", {
+
+    // Notify everyone watching this patient
+    notifier.newVitals(io, {
+      patientID,
+      patientDbId: patient.id,
       reading,
       alerts,
       recordedBy: req.user.name,
     });
 
-    // If critical alerts exist, emit a separate urgent event
+    // Critical alerts also go to the hospital room
     const criticalAlerts = alerts.filter((a) => a.severity === "critical");
     if (criticalAlerts.length > 0) {
-      io.to(`patient:${patientID}`).emit("vitals:critical", {
+      notifier.criticalVitals(io, {
         patientID,
+        patientDbId: patient.id,
+        hospitalId,
         patientName: patient.name,
-        alerts: criticalAlerts,
-        recordedAt: reading.recordedAt,
+        alerts:      criticalAlerts,
+        recordedAt:  reading.recordedAt,
       });
     }
 
     res.status(201).json({
-      message:  "Vitals recorded successfully.",
+      message:     "Vitals recorded successfully.",
       reading,
-      alerts,           // always return alerts — empty array if all normal
-      hasAlerts: alerts.length > 0,
+      alerts,
+      hasAlerts:   alerts.length > 0,
       hasCritical: criticalAlerts.length > 0,
     });
   } catch (err) { next(err); }
@@ -46,13 +50,10 @@ const recordVitals = async (req, res, next) => {
 
 /**
  * GET /api/patients/:patientID/vitals/latest
- * Returns the most recent vitals reading. Used for dashboard summary cards.
- * Served from Redis cache when available.
  */
 const getLatestVitals = async (req, res, next) => {
   try {
-    const { patientID } = req.params;
-    const result = await vitalsService.getLatestVitals(patientID);
+    const result = await vitalsService.getLatestVitals(req.params.patientID);
 
     if (!result.reading) {
       return res.status(200).json({
@@ -68,42 +69,29 @@ const getLatestVitals = async (req, res, next) => {
 
 /**
  * GET /api/patients/:patientID/vitals/history
- * Time-series array of all vitals — designed to feed chart libraries directly.
- *
- * Query params:
- *   from    — ISO date string (e.g. 2024-01-01)
- *   to      — ISO date string
- *   limit   — max records to return (default 100, max 500)
+ * Query params: from, to, limit
  */
 const getVitalsHistory = async (req, res, next) => {
   try {
-    const { patientID } = req.params;
     const { from, to, limit } = req.query;
-
-    const result = await vitalsService.getVitalsHistory(patientID, { from, to, limit });
-
+    const result = await vitalsService.getVitalsHistory(
+      req.params.patientID, { from, to, limit }
+    );
     res.status(200).json(result);
   } catch (err) { next(err); }
 };
 
 /**
  * GET /api/patients/:patientID/vitals/summary
- * Aggregated stats (averages, min/max, total readings).
- * Used for the analytics dashboard.
  */
 const getVitalsSummary = async (req, res, next) => {
   try {
-    const { patientID } = req.params;
-    const { from, to }  = req.query;
-
-    const result = await vitalsService.getVitalsSummary(patientID, { from, to });
+    const { from, to } = req.query;
+    const result = await vitalsService.getVitalsSummary(
+      req.params.patientID, { from, to }
+    );
     res.status(200).json(result);
   } catch (err) { next(err); }
 };
 
-module.exports = {
-  recordVitals,
-  getLatestVitals,
-  getVitalsHistory,
-  getVitalsSummary,
-};
+module.exports = { recordVitals, getLatestVitals, getVitalsHistory, getVitalsSummary };

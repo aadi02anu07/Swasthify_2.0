@@ -80,3 +80,9 @@ router.patch(
 );
 
 module.exports = router;
+
+// ── Appointments (convenience alias) ─────────────────────────────────────────
+// GET /api/patients/:patientID/appointments
+// Delegates to the appointment controller — same logic, cleaner URL for patient charts.
+const apptCtrl = require("../controllers/appointmentController");
+router.get("/:patientID/appointments", apptCtrl.getPatientAppointments);
