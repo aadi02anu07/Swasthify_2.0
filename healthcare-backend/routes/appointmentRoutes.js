@@ -2,7 +2,7 @@ const express = require("express");
 const router  = express.Router();
 
 const { verifyToken, staffOnly, clinicalStaffOnly, doctorOnly } = require("../middleware/authMiddleware");
-const { validate } = require("../middleware/validate");
+const  validate  = require("../middleware/validate");
 const apptCtrl = require("../controllers/appointmentController");
 const {
   createAppointmentRules,

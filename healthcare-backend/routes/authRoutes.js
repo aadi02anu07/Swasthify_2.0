@@ -2,7 +2,7 @@ const express = require("express");
 const router  = express.Router();
 
 const ctrl = require("../controllers/authController");
-const { validate } = require("../middleware/validate");
+const validate  = require("../middleware/validate");
 const { verifyToken } = require("../middleware/authMiddleware");
 const {
   registerHospitalRules, loginHospitalRules,

@@ -3,7 +3,7 @@ const rateLimit  = require("express-rate-limit");
 const router     = express.Router();
 
 const { verifyToken, staffOnly } = require("../middleware/authMiddleware");
-const { validate }               = require("../middleware/validate");
+const validate                = require("../middleware/validate");
 const reportCtrl                 = require("../controllers/reportController");
 const { query }                  = require("express-validator");
 
