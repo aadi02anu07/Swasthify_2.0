@@ -1,6 +1,6 @@
 {
   "name": "swasthify-backend",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "description": "Swasthify — multi-hospital patient record network",
   "main": "server.js",
   "scripts": {
