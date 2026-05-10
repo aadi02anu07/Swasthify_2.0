@@ -48,7 +48,7 @@ model Hospital {
   city             String
   state            String
   phone            String?
-  email            String?
+  email            String?  @unique
   verified         Boolean  @default(false)
   passwordHash     String                        // hospital-admin login
   createdAt        DateTime @default(now())

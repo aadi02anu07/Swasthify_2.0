@@ -7,11 +7,11 @@ const { cacheSet, cacheGet } = require("../config/redis");
 // gemini-1.5-flash: fastest model, generous free tier, sufficient for structured analysis.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-2.5-flash",
   generationConfig: {
-    temperature:     0.3,  // lower = more consistent, less creative — good for clinical text
-    topP:            0.8,
-    maxOutputTokens: 1500,
+    temperature: 0.3,  // lower = more consistent, less creative — good for clinical text
+    topP: 0.8,
+    maxOutputTokens: 2000,
   },
 });
 
@@ -64,7 +64,7 @@ const RESPONSE_SCHEMA = `
 
 const findPatient = async (patientID) => {
   const patient = await prisma.patient.findUnique({
-    where:  { patientID },
+    where: { patientID },
     select: { id: true, patientID: true, name: true, dob: true, bloodGroup: true, gender: true },
   });
   if (!patient) throw { status: 404, message: `Patient '${patientID}' not found.` };
@@ -77,10 +77,19 @@ const computeAge = (dob) =>
 
 /** Parse Gemini's response safely — strips any accidental markdown fences */
 const parseGeminiJSON = (text) => {
-  const cleaned = text
+  // Strip markdown fences
+  let cleaned = text
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();
+
+  // Find the first { and last } to extract just the JSON object
+  const start = cleaned.indexOf("{");
+  const end   = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+
   return JSON.parse(cleaned);
 };
 
@@ -123,9 +132,9 @@ const analyzeVitals = async (patientID) => {
   const patient = await findPatient(patientID);
 
   const readings = await prisma.vitalsHistory.findMany({
-    where:   { patientId: patient.id },
+    where: { patientId: patient.id },
     orderBy: { recordedAt: "desc" },
-    take:    20,
+    take: 20,
     select: {
       bpSystolic: true, bpDiastolic: true, heartRate: true,
       sugar: true, spo2: true, temperature: true, weight: true,
@@ -141,7 +150,7 @@ const analyzeVitals = async (patientID) => {
   // New reading → different timestamp → cache miss → fresh Gemini call
   const latestTs = readings[0].recordedAt.getTime();
   const cacheKey = `ai:vitals:${patient.id}:${latestTs}`;
-  const cached   = await cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) return { patient: { patientID, name: patient.name }, analysis: cached, fromCache: true };
 
   const age = computeAge(patient.dob);
@@ -184,19 +193,19 @@ const analyzeFullChart = async (patientID) => {
 
   const [readings, medicalHistory] = await Promise.all([
     prisma.vitalsHistory.findMany({
-      where:   { patientId: patient.id },
+      where: { patientId: patient.id },
       orderBy: { recordedAt: "desc" },
-      take:    15,
+      take: 15,
       select: {
         bpSystolic: true, bpDiastolic: true, heartRate: true,
         sugar: true, spo2: true, temperature: true, recordedAt: true,
       },
     }),
     prisma.medicalHistory.findMany({
-      where:   { patientId: patient.id },
+      where: { patientId: patient.id },
       orderBy: { occurredAt: "desc" },
-      take:    15,
-      select:  { title: true, type: true, description: true, severity: true, occurredAt: true },
+      take: 15,
+      select: { title: true, type: true, description: true, severity: true, occurredAt: true },
     }),
   ]);
 
@@ -205,10 +214,10 @@ const analyzeFullChart = async (patientID) => {
   }
 
   // Cache key uses timestamps of both latest vitals and latest medical record
-  const latestVitalsTs  = readings[0]?.recordedAt.getTime()      ?? 0;
+  const latestVitalsTs = readings[0]?.recordedAt.getTime() ?? 0;
   const latestHistoryTs = medicalHistory[0]?.occurredAt.getTime() ?? 0;
   const cacheKey = `ai:chart:${patient.id}:${latestVitalsTs}:${latestHistoryTs}`;
-  const cached   = await cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) return { patient: { patientID, name: patient.name }, analysis: cached, fromCache: true };
 
   const age = computeAge(patient.dob);
@@ -221,17 +230,17 @@ PATIENT DEMOGRAPHICS:
 
 RECENT VITALS (${readings.length} readings, most recent first):
 ${readings.length > 0
-  ? readings.map((r, i) => `
+      ? readings.map((r, i) => `
 Reading ${i + 1} — ${new Date(r.recordedAt).toISOString().slice(0, 10)}:
   BP: ${r.bpSystolic}/${r.bpDiastolic} mmHg | HR: ${r.heartRate} bpm | Sugar: ${r.sugar} mg/dL | SpO2: ${r.spo2 ?? "N/A"}% | Temp: ${r.temperature ?? "N/A"}°C`).join("\n")
-  : "No vitals recorded."}
+      : "No vitals recorded."}
 
 MEDICAL HISTORY (${medicalHistory.length} records, most recent first):
 ${medicalHistory.length > 0
-  ? medicalHistory.map((h, i) => `
+      ? medicalHistory.map((h, i) => `
 Record ${i + 1} — ${new Date(h.occurredAt).toISOString().slice(0, 10)} [${h.type.toUpperCase()}]${h.severity ? ` — Severity: ${h.severity}` : ""}:
   ${h.title}: ${h.description}`).join("\n")
-  : "No medical history recorded."}
+      : "No medical history recorded."}
 
 TASK: Provide a comprehensive clinical assessment. Consider how the medical history context may explain or inform the vitals patterns. Highlight any interactions between past conditions and current readings that a treating physician should be aware of.
 `.trim();

@@ -65,11 +65,23 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, async () => {
   console.log(`\n🚀 Swasthify API v3 running on port ${PORT}`);
-  try {
-    await prisma.$connect();
-    console.log("✅ PostgreSQL connected via Prisma");
-  } catch (err) {
-    console.error("❌ DB connection failed:", err.message);
-    process.exit(1);
+  
+  // Retry DB connection up to 5 times (Neon free tier sleeps and needs a wake-up)
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      await prisma.$connect();
+      console.log("✅ PostgreSQL connected via Prisma");
+      break;
+    } catch (err) {
+      retries--;
+      if (retries === 0) {
+        console.error("❌ DB connection failed after 5 attempts:", err.message);
+        // Don't exit — server still runs, DB will connect on first request
+      } else {
+        console.log(`⏳ DB not ready, retrying in 3s... (${retries} attempts left)`);
+        await new Promise(res => setTimeout(res, 3000));
+      }
+    }
   }
 });

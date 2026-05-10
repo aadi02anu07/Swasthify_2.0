@@ -9,7 +9,7 @@ const { saveRefreshToken } = require("../config/redis");
  * Generates a unique registrationCode that the hospital shares with its staff.
  */
 const registerHospital = async ({ name, city, state, phone, email, password }) => {
-  const existing = await prisma.hospital.findUnique({ where: { email } });
+  const existing = await prisma.hospital.findFirst({ where: { email } });
   if (existing) throw { status: 409, message: "A hospital with this email already exists." };
 
   // Ensure the registration code is unique (extremely unlikely collision but safe)
@@ -38,7 +38,7 @@ const registerHospital = async ({ name, city, state, phone, email, password }) =
  * Returns short-lived access token + long-lived refresh token.
  */
 const loginHospital = async ({ email, password }) => {
-  const hospital = await prisma.hospital.findUnique({ where: { email } });
+  const hospital = await prisma.hospital.findFirst({ where: { email } });
   if (!hospital) throw { status: 401, message: "Invalid credentials." };
 
   const match = await bcrypt.compare(password, hospital.passwordHash);
