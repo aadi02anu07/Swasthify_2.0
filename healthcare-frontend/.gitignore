@@ -1,3 +1,51 @@
-.vercel
-.env*.local
+# Dependencies
 node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Production build
+dist/
+build/
+
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor folders/files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Cache files
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Vite files
+.vite/
+
+# Coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Optional lock files (keep package-lock.json if collaborating)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
