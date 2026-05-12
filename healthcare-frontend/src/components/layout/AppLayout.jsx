@@ -4,12 +4,25 @@ import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import useAuthStore from '@/store/authStore'
 import useNotificationStore from '@/store/notificationStore'
-import { initSocket, disconnectSocket, getSocket } from '@/socket/socket'
+import { initSocket, disconnectSocket } from '@/socket/socket'
+import { API_URL } from '@/utils/constants'
 import toast from 'react-hot-toast'
 
+// Ping the backend every 10 minutes to prevent Render cold starts
+const useKeepAlive = () => {
+  useEffect(() => {
+    const ping = () => fetch(`${API_URL}/api/auth/refresh`, { method: 'POST', body: JSON.stringify({}), headers: { 'Content-Type': 'application/json' } }).catch(() => {})
+    ping() // ping on mount
+    const id = setInterval(ping, 10 * 60 * 1000) // every 10 min
+    return () => clearInterval(id)
+  }, [])
+}
+
 export default function AppLayout() {
-  const { user, accessToken } = useAuthStore()
+  const { accessToken } = useAuthStore()
   const { addNotification, addCriticalAlert } = useNotificationStore()
+
+  useKeepAlive()
 
   useEffect(() => {
     if (!accessToken) return
