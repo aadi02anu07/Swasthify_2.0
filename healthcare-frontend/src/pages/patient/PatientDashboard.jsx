@@ -4,7 +4,8 @@ import { motion } from 'framer-motion'
 import { Activity, Calendar, Clock, ChevronRight, Loader2, Heart } from 'lucide-react'
 import { usePatientData } from '@/hooks/usePatientData'
 import { useVitalsChart } from '@/hooks/useVitalsChart'
-import { getPatientAppointments } from '@/api/appointments'
+import { getPatientAppointments } from "@/api/appointments"
+import { getLatestVitals } from "@/api/vitals"
 import useAuthStore from '@/store/authStore'
 import VitalsLatestCard from '@/components/vitals/VitalsLatestCard'
 import HeartRateChart from '@/components/charts/HeartRateChart'
@@ -41,6 +42,14 @@ export default function PatientDashboard() {
   const patientID = user?.patientID
 
   const { data, loading } = usePatientData(patientID)
+  const [freshVitals, setFreshVitals] = useState(null)
+
+  useEffect(() => {
+    if (!patientID) return
+    getLatestVitals(patientID)
+      .then((res) => setFreshVitals(res.data.reading))
+      .catch(() => {})
+  }, [patientID])
   const { chartData, loading: chartLoading } = useVitalsChart(patientID, 10)
   const [appointments, setAppointments] = useState([])
   const [apptLoading, setApptLoading] = useState(true)
@@ -56,7 +65,7 @@ export default function PatientDashboard() {
   if (loading) return <PageLoader />
 
   const patient = data?.patient
-  const latestVitals = data?.latestVitals
+  const latestVitals = freshVitals || data?.latestVitals
   const recentHistory = data?.recentHistory || []
   const stats = data?.stats
   const nextAppt = appointments.find((a) => a.status === 'pending' || a.status === 'confirmed')

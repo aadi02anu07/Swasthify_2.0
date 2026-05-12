@@ -26,10 +26,10 @@ import { cn } from '@/utils/cn'
 import toast from 'react-hot-toast'
 
 const TABS = [
-  { id: 'vitals',       label: 'Vitals',       icon: Activity },
-  { id: 'history',      label: 'History',       icon: Clock },
-  { id: 'appointments', label: 'Appointments',  icon: Calendar },
-  { id: 'ai',           label: 'AI Analysis',   icon: Brain },
+  { id: 'vitals',       label: 'Vitals',      icon: Activity },
+  { id: 'history',      label: 'History',      icon: Clock },
+  { id: 'appointments', label: 'Appointments', icon: Calendar },
+  { id: 'ai',           label: 'AI Analysis',  icon: Brain },
 ]
 
 const ChartSection = ({ title, children }) => (
@@ -41,18 +41,27 @@ const ChartSection = ({ title, children }) => (
 
 export default function PatientChart() {
   const { patientID } = useParams()
-  const [tab, setTab] = useState('vitals')
+  const [tab, setTab]               = useState('vitals')
   const [vitalsOpen, setVitalsOpen] = useState(false)
   const [recordOpen, setRecordOpen] = useState(false)
-  const [bookOpen, setBookOpen] = useState(false)
-  const [timeline, setTimeline] = useState([])
+  const [bookOpen, setBookOpen]     = useState(false)
+  const [timeline, setTimeline]     = useState([])
   const [timelineLoading, setTimelineLoading] = useState(false)
-  const [appointments, setAppointments] = useState([])
-  const [apptLoading, setApptLoading] = useState(false)
+  const [appointments, setAppointments]       = useState([])
+  const [apptLoading, setApptLoading]         = useState(false)
+
+  // latestVitals is managed locally so it updates instantly after recording
   const [latestVitals, setLatestVitals] = useState(null)
 
   const { data: patientData, loading: patientLoading, refetch: refetchPatient } = usePatientData(patientID)
   const { chartData, summary, loading: vitalsLoading, appendReading, refetch: refetchVitals } = useVitalsChart(patientID, 50)
+
+  // Seed latestVitals from summary on first load only
+  useEffect(() => {
+    if (patientData?.latestVitals && !latestVitals) {
+      setLatestVitals(patientData.latestVitals)
+    }
+  }, [patientData])
 
   // Socket.IO real-time updates
   useEffect(() => {
@@ -61,8 +70,10 @@ export default function PatientChart() {
     if (!socket) return
 
     socket.on('vitals:new', (data) => {
-      appendReading(data.reading)
-      setLatestVitals(data.reading)
+      if (data.reading) {
+        appendReading(data.reading)
+        setLatestVitals(data.reading) // always update from socket too
+      }
       if (data.hasAlerts) toast(`⚠ ${data.alerts?.length} alert(s) on new reading`, { icon: '⚠️' })
     })
 
@@ -101,19 +112,24 @@ export default function PatientChart() {
   }, [patientID])
 
   useEffect(() => {
-    if (tab === 'history') fetchTimeline()
+    if (tab === 'history')      fetchTimeline()
     if (tab === 'appointments') fetchAppointments()
   }, [tab])
 
-  useEffect(() => {
-    if (patientData?.latestVitals) setLatestVitals(patientData.latestVitals)
-  }, [patientData])
+  // Called when new vitals are submitted via the form
+  const handleVitalsSuccess = (reading) => {
+    if (reading) {
+      setLatestVitals(reading)   // update card immediately with full reading incl. weight
+      appendReading(reading)     // update charts
+    }
+    refetchVitals()              // refresh summary stats
+    refetchPatient()             // refresh header counts
+  }
 
   if (patientLoading) return <PageLoader />
 
   const patient = patientData?.patient
-  const stats = patientData?.stats
-  const hasCritical = patientData?.latestVitals && false // derived from alerts
+  const stats   = patientData?.stats
 
   return (
     <div>
@@ -121,13 +137,14 @@ export default function PatientChart() {
         patient={patient}
         stats={stats}
         latestVitals={latestVitals}
-        hasCritical={hasCritical}
+        hasCritical={false}
         onRecordVitals={() => setVitalsOpen(true)}
         onAddRecord={() => setRecordOpen(true)}
       />
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 rounded-2xl" style={{ background: 'rgba(13,27,46,0.5)', border: '1px solid rgba(30,58,95,0.3)' }}>
+      <div className="flex gap-1 mb-6 p-1 rounded-2xl"
+        style={{ background: 'rgba(13,27,46,0.5)', border: '1px solid rgba(30,58,95,0.3)' }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -154,7 +171,9 @@ export default function PatientChart() {
           </div>
 
           {vitalsLoading ? (
-            <div className="flex justify-center py-12"><Loader2 size={24} className="animate-spin text-slate-500" /></div>
+            <div className="flex justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-slate-500" />
+            </div>
           ) : chartData.length === 0 ? (
             <EmptyState icon={Activity} title="No vitals recorded yet" description="Record the first vitals to see trends." />
           ) : (
@@ -225,10 +244,7 @@ export default function PatientChart() {
         isOpen={vitalsOpen}
         onClose={() => setVitalsOpen(false)}
         patientID={patientID}
-        onSuccess={(reading) => {
-          if (reading) { appendReading(reading); setLatestVitals(reading) }
-          refetchVitals()
-        }}
+        onSuccess={handleVitalsSuccess}
       />
       <AddRecordModal
         isOpen={recordOpen}
