@@ -4,12 +4,12 @@ import { getVitalStatus, getVitalStatusColor, fDateTime } from '@/utils/formatte
 import { cn } from '@/utils/cn'
 
 const vitalsConfig = [
-  { key: 'heartRate',    label: 'Heart Rate',     unit: 'bpm',   icon: Heart,       color: '#f43f5e', metricKey: 'heartRate' },
-  { key: 'bp',          label: 'Blood Pressure',  unit: 'mmHg',  icon: Activity,    color: '#3b82f6', metricKey: 'bpSystolic' },
-  { key: 'sugar',       label: 'Blood Sugar',     unit: 'mg/dL', icon: Droplets,    color: '#f59e0b', metricKey: 'sugar' },
-  { key: 'spo2',        label: 'SpO₂',            unit: '%',     icon: Wind,        color: '#8b5cf6', metricKey: 'spo2' },
-  { key: 'temperature', label: 'Temperature',     unit: '°C',    icon: Thermometer, color: '#06b6d4', metricKey: 'temperature' },
-  { key: 'weight',      label: 'Weight',          unit: 'kg',    icon: Scale,       color: '#94a3b8', metricKey: null },
+  { key: 'heartRate', label: 'Heart Rate', unit: 'bpm', icon: Heart, color: '#f43f5e', metricKey: 'heartRate' },
+  { key: 'bp', label: 'Blood Pressure', unit: 'mmHg', icon: Activity, color: '#3b82f6', metricKey: 'bpSystolic' },
+  { key: 'sugar', label: 'Blood Sugar', unit: 'mg/dL', icon: Droplets, color: '#f59e0b', metricKey: 'sugar' },
+  { key: 'spo2', label: 'SpO₂', unit: '%', icon: Wind, color: '#8b5cf6', metricKey: 'spo2' },
+  { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#06b6d4', metricKey: 'temperature' },
+  { key: 'weight', label: 'Weight', unit: 'kg', icon: Scale, color: '#94a3b8', metricKey: null },
 ]
 
 const statusLabels = { normal: 'Normal', warning: 'Warning', critical: 'Critical', unknown: '—' }
@@ -38,8 +38,8 @@ function VitalCard({ config, reading, index }) {
       className={cn(
         'glass-card p-4 border',
         config.metricKey && status === 'critical' && 'vital-card-critical',
-        config.metricKey && status === 'warning'  && 'vital-card-warning',
-        config.metricKey && status === 'normal'   && 'vital-card-normal',
+        config.metricKey && status === 'warning' && 'vital-card-warning',
+        config.metricKey && status === 'normal' && 'vital-card-normal',
         !config.metricKey && 'border-slate-500/20',
       )}
     >
@@ -56,9 +56,9 @@ function VitalCard({ config, reading, index }) {
       <p className={cn('mono text-2xl font-semibold', hasValue ? 'text-slate-100' : 'text-slate-600')}>
         {hasValue ? displayValue : '—'}
       </p>
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-xs text-slate-500">{config.unit}</p>
+      <div className="mt-1">
         <p className="text-xs text-slate-500">{config.label}</p>
+        <p className="text-xs text-slate-400">{config.unit}</p>
       </div>
     </motion.div>
   )
