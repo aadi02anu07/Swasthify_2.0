@@ -1,51 +1,37 @@
 # Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Environment variables
-.env
-.env.*
-
-# Production build
+# Build output
 dist/
-build/
+dist-ssr/
 
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Logs
-logs
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor folders/files
+# Editor
 .vscode/
 .idea/
-*.swp
-*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
 .DS_Store
 Thumbs.db
 
-# Cache files
-.cache/
-.parcel-cache/
-.eslintcache
-
-# Vite files
-.vite/
-
-# Coverage
-coverage/
-
-# Temporary files
-tmp/
-temp/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Optional lock files (keep package-lock.json if collaborating)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+# Vite
+*.local
+vite.config.js.timestamp-*

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute, PublicRoute } from '@/utils/roleGuard'
 import AppLayout from '@/components/layout/AppLayout'
 
+import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 
@@ -16,9 +17,9 @@ import HospitalDashboard from '@/pages/admin/HospitalDashboard'
 
 import useAuthStore from '@/store/authStore'
 
-const RootRedirect = () => {
+const HomeRoute = () => {
   const { user } = useAuthStore()
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <HomePage />
   if (user.type === 'patient') return <Navigate to="/patient" replace />
   if (user.role === 'admin' || user.type === 'hospital') return <Navigate to="/admin" replace />
   return <Navigate to="/doctor" replace />
@@ -27,51 +28,19 @@ const RootRedirect = () => {
 export default function App() {
   return (
     <Routes>
-      {/* Public routes */}
+      <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-      {/* Protected routes wrapped in AppLayout */}
-      <Route element={
-        <ProtectedRoute>
-          <AppLayout />
-        </ProtectedRoute>
-      }>
-        <Route path="/doctor" element={
-          <ProtectedRoute allowedRoles={['staff', 'doctor', 'nurse']}>
-            <DoctorDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/doctor/patient/:patientID" element={
-          <ProtectedRoute allowedRoles={['staff', 'doctor', 'nurse']}>
-            <PatientChart />
-          </ProtectedRoute>
-        } />
-        <Route path="/doctor/schedule" element={
-          <ProtectedRoute allowedRoles={['staff', 'doctor']}>
-            <SchedulePage />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/patient" element={
-          <ProtectedRoute allowedRoles={['patient']}>
-            <PatientDashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/patient/history" element={
-          <ProtectedRoute allowedRoles={['patient']}>
-            <MyHistoryPage />
-          </ProtectedRoute>
-        } />
-
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRoles={['admin', 'hospital', 'staff']}>
-            <HospitalDashboard />
-          </ProtectedRoute>
-        } />
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/doctor" element={<ProtectedRoute allowedRoles={['staff', 'doctor', 'nurse']}><DoctorDashboard /></ProtectedRoute>} />
+        <Route path="/doctor/patient/:patientID" element={<ProtectedRoute allowedRoles={['staff', 'doctor', 'nurse']}><PatientChart /></ProtectedRoute>} />
+        <Route path="/doctor/schedule" element={<ProtectedRoute allowedRoles={['staff', 'doctor']}><SchedulePage /></ProtectedRoute>} />
+        <Route path="/patient" element={<ProtectedRoute allowedRoles={['patient']}><PatientDashboard /></ProtectedRoute>} />
+        <Route path="/patient/history" element={<ProtectedRoute allowedRoles={['patient']}><MyHistoryPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'hospital', 'staff']}><HospitalDashboard /></ProtectedRoute>} />
       </Route>
 
-      <Route path="/" element={<RootRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
