@@ -4,18 +4,19 @@ import { motion } from 'framer-motion'
 import { Activity, Calendar, Clock, ChevronRight, Loader2, Heart } from 'lucide-react'
 import { usePatientData } from '@/hooks/usePatientData'
 import { useVitalsChart } from '@/hooks/useVitalsChart'
-import { getPatientAppointments } from "@/api/appointments"
-import { getLatestVitals } from "@/api/vitals"
+import { getPatientAppointments } from '@/api/appointments'
+import { getLatestVitals } from '@/api/vitals'
 import useAuthStore from '@/store/authStore'
 import VitalsLatestCard from '@/components/vitals/VitalsLatestCard'
 import HeartRateChart from '@/components/charts/HeartRateChart'
 import BloodPressureChart from '@/components/charts/BloodPressureChart'
-import AppointmentCard from '@/components/appointments/AppointmentCard'
+import SugarChart from '@/components/charts/SugarChart'
+import SpO2Chart from '@/components/charts/SpO2Chart'
 import RecordTypeIcon from '@/components/history/RecordTypeIcon'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import { PageLoader } from '@/components/ui/Spinner'
-import { fDate, fAge } from '@/utils/formatters'
+import { fDate, fAge, fTime } from '@/utils/formatters'
 
 const StatCard = ({ icon: Icon, label, value, color, delay, to }) => {
   const inner = (
@@ -42,7 +43,10 @@ export default function PatientDashboard() {
   const patientID = user?.patientID
 
   const { data, loading } = usePatientData(patientID)
-  const [freshVitals, setFreshVitals] = useState(null)
+  const { chartData, loading: chartLoading } = useVitalsChart(patientID, 20)
+  const [appointments, setAppointments] = useState([])
+  const [apptLoading, setApptLoading]   = useState(true)
+  const [freshVitals, setFreshVitals]   = useState(null)
 
   useEffect(() => {
     if (!patientID) return
@@ -50,9 +54,6 @@ export default function PatientDashboard() {
       .then((res) => setFreshVitals(res.data.reading))
       .catch(() => {})
   }, [patientID])
-  const { chartData, loading: chartLoading } = useVitalsChart(patientID, 10)
-  const [appointments, setAppointments] = useState([])
-  const [apptLoading, setApptLoading] = useState(true)
 
   useEffect(() => {
     if (!patientID) return
@@ -64,21 +65,18 @@ export default function PatientDashboard() {
 
   if (loading) return <PageLoader />
 
-  const patient = data?.patient
+  const patient      = data?.patient
   const latestVitals = freshVitals || data?.latestVitals
   const recentHistory = data?.recentHistory || []
-  const stats = data?.stats
-  const nextAppt = appointments.find((a) => a.status === 'pending' || a.status === 'confirmed')
+  const stats         = data?.stats
+  const nextAppt      = appointments.find((a) => a.status === 'pending' || a.status === 'confirmed')
 
   return (
     <div className="space-y-6">
       {/* Welcome header */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
         className="glass-card p-6"
-        style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.05))' }}
-      >
+        style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.05))' }}>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -94,115 +92,103 @@ export default function PatientDashboard() {
                   {patient.bloodGroup}
                 </span>
               )}
+              {patient?.gender && <span className="text-slate-400 text-sm capitalize">{patient.gender}</span>}
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500 uppercase tracking-wide">Records since</p>
-            <p className="mono text-slate-300 font-medium mt-0.5">{patient?.dob ? fDate(patient.dob) : '—'}</p>
           </div>
         </div>
       </motion.div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={Activity} label="Vitals Recorded"  value={stats?.totalVitals}   color="#3b82f6" delay={0} />
-        <StatCard icon={Clock}    label="Medical Records"  value={stats?.totalHistory}  color="#8b5cf6" delay={0.05} to="/patient/history" />
-        <StatCard icon={Calendar} label="Appointments"     value={appointments.length}  color="#10b981" delay={0.1} />
+        <StatCard icon={Activity} label="Vitals Recorded" value={stats?.totalVitals}  color="#3b82f6" delay={0} />
+        <StatCard icon={Clock}    label="Medical Records" value={stats?.totalHistory} color="#8b5cf6" delay={0.05} to="/patient/history" />
+        <StatCard icon={Calendar} label="Appointments"    value={appointments.length} color="#10b981" delay={0.1} />
       </div>
 
-      {/* Main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Latest vitals */}
-          <div className="glass-card p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-4">Current Vitals</p>
-            <VitalsLatestCard reading={latestVitals} />
-          </div>
+      {/* Latest vitals */}
+      <div className="glass-card p-5">
+        <p className="text-xs text-slate-500 uppercase tracking-wide mb-4">Current Vitals</p>
+        <VitalsLatestCard reading={latestVitals} />
+      </div>
 
-          {/* Mini charts */}
-          {!chartLoading && chartData.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="glass-card p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">❤ Heart Rate</p>
-                <HeartRateChart data={chartData} />
-              </div>
-              <div className="glass-card p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">🩺 Blood Pressure</p>
-                <BloodPressureChart data={chartData} />
-              </div>
+      {/* All 4 charts */}
+      {!chartLoading && chartData.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="glass-card p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">❤ Heart Rate (bpm)</p>
+            <HeartRateChart data={chartData} />
+          </div>
+          <div className="glass-card p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">🩺 Blood Pressure (mmHg)</p>
+            <BloodPressureChart data={chartData} />
+          </div>
+          <div className="glass-card p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">🩸 Blood Sugar (mg/dL)</p>
+            <SugarChart data={chartData} />
+          </div>
+          <div className="glass-card p-4">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">💨 SpO₂ (%)</p>
+            <SpO2Chart data={chartData} />
+          </div>
+        </div>
+      )}
+
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Appointments */}
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Appointments</p>
+          </div>
+          {apptLoading ? (
+            <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-slate-500" /></div>
+          ) : appointments.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-4">No appointments yet</p>
+          ) : (
+            <div className="space-y-2">
+              {appointments.slice(0, 5).map((a) => (
+                <div key={a.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-navy-700/20">
+                  <div className="min-w-0">
+                    <p className="text-slate-300 text-sm font-medium truncate">{a.reason || 'Appointment'}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">
+                      {fDate(a.scheduledAt)} · {fTime(a.scheduledAt)}
+                      {a.staff?.name && ` · ${a.staff.name}`}
+                    </p>
+                  </div>
+                  <Badge variant={a.status === 'pending' ? 'amber' : a.status === 'confirmed' ? 'blue' : a.status === 'completed' ? 'emerald' : 'rose'}>
+                    {a.status}
+                  </Badge>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-          {/* Next appointment */}
-          <div className="glass-card p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Next Appointment</p>
-            {apptLoading ? (
-              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-slate-500" /></div>
-            ) : nextAppt ? (
-              <div className="space-y-2">
-                <Badge variant={nextAppt.status === 'pending' ? 'amber' : 'blue'} dot>{nextAppt.status}</Badge>
-                <p className="text-slate-200 font-medium text-sm">{nextAppt.reason || 'Appointment'}</p>
-                <p className="mono text-blue-400 text-sm">{fDate(nextAppt.scheduledAt)}</p>
-                {nextAppt.staff?.name && (
-                  <p className="text-slate-400 text-xs">with {nextAppt.staff.name}</p>
-                )}
-                {nextAppt.hospital?.name && (
-                  <p className="text-slate-500 text-xs">{nextAppt.hospital.name}</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-slate-500 text-sm text-center py-4">No upcoming appointments</p>
-            )}
+        {/* Recent history */}
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-slate-500 uppercase tracking-wide">Recent Records</p>
+            <Link to="/patient/history" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
+              View all <ChevronRight size={12} />
+            </Link>
           </div>
-
-          {/* Recent history */}
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Recent Records</p>
-              <Link to="/patient/history" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                View all <ChevronRight size={12} />
-              </Link>
-            </div>
-            {recentHistory.length === 0 ? (
-              <p className="text-slate-500 text-sm text-center py-4">No records yet</p>
-            ) : (
-              <div className="space-y-3">
-                {recentHistory.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex items-center gap-3">
-                    <RecordTypeIcon type={r.type} size={14} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-slate-300 text-xs font-medium truncate">{r.title}</p>
-                      <p className="text-slate-500 text-[10px] mt-0.5">{fDate(r.occurredAt)} · {r.hospital?.name}</p>
-                    </div>
+          {recentHistory.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-4">No records yet</p>
+          ) : (
+            <div className="space-y-3">
+              {recentHistory.slice(0, 5).map((r) => (
+                <div key={r.id} className="flex items-center gap-3">
+                  <RecordTypeIcon type={r.type} size={14} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-300 text-xs font-medium truncate">{r.title}</p>
+                    <p className="text-slate-500 text-[10px] mt-0.5">{fDate(r.occurredAt)} · {r.hospital?.name}</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* All appointments */}
-          {appointments.length > 0 && (
-            <div className="glass-card p-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">Recent Appointments</p>
-              <div className="space-y-2">
-                {appointments.slice(0, 3).map((a) => (
-                  <div key={a.id} className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-slate-300 text-xs truncate">{a.reason || 'Appointment'}</p>
-                      <p className="text-slate-500 text-[10px] mt-0.5">{fDate(a.scheduledAt)}</p>
-                    </div>
-                    <Badge variant={a.status === 'pending' ? 'amber' : a.status === 'confirmed' ? 'blue' : a.status === 'completed' ? 'emerald' : 'rose'}>
-                      {a.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
     </div>
   )
-}
+} 

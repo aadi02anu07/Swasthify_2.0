@@ -7,7 +7,7 @@ const SCHEDULE_CACHE_TTL = 120; // 2 min
 // Defines which status changes are legal.
 // completed and cancelled are terminal — nothing moves out of them.
 const VALID_TRANSITIONS = {
-  pending:   ["confirmed", "cancelled"],
+  pending: ["confirmed", "cancelled"],
   confirmed: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
@@ -17,7 +17,7 @@ const VALID_TRANSITIONS = {
 
 const findPatient = async (patientID) => {
   const patient = await prisma.patient.findUnique({
-    where:  { patientID },
+    where: { patientID },
     select: { id: true, patientID: true, name: true, phone: true },
   });
   if (!patient) throw { status: 404, message: `Patient '${patientID}' not found.` };
@@ -28,8 +28,8 @@ const findAppointment = async (appointmentId) => {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: {
-      patient:  { select: { id: true, patientID: true, name: true } },
-      staff:    { select: { id: true, name: true, role: true } },
+      patient: { select: { id: true, patientID: true, name: true } },
+      staff: { select: { id: true, name: true, role: true } },
       hospital: { select: { id: true, name: true, city: true } },
     },
   });
@@ -72,7 +72,7 @@ const createAppointment = async (patientID, creatorStaffId, hospitalId, data) =>
   const conflict = await prisma.appointment.findFirst({
     where: {
       staffId,
-      status:      { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "confirmed"] },
       scheduledAt: {
         gte: new Date(scheduledDate.getTime() - thirtyMin),
         lte: new Date(scheduledDate.getTime() + thirtyMin),
@@ -88,16 +88,16 @@ const createAppointment = async (patientID, creatorStaffId, hospitalId, data) =>
 
   const appointment = await prisma.appointment.create({
     data: {
-      patientId:  patient.id,
+      patientId: patient.id,
       hospitalId,
       staffId,
       scheduledAt: scheduledDate,
-      reason:      reason || null,
-      notes:       notes  || null,
+      reason: reason || null,
+      notes: notes || null,
     },
     include: {
-      patient:  { select: { id: true, patientID: true, name: true } },
-      staff:    { select: { id: true, name: true, role: true } },
+      patient: { select: { id: true, patientID: true, name: true } },
+      staff: { select: { id: true, name: true, role: true } },
       hospital: { select: { name: true, city: true } },
     },
   });
@@ -117,13 +117,14 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
   const skip = (parseInt(page) - 1) * take;
 
   const where = { hospitalId };
-  if (status)  where.status  = status;
+  if (status) where.status = status;
   if (staffId) where.staffId = staffId;
   if (date) {
-    const day   = new Date(date);
-    const start = new Date(day.setHours(0, 0, 0, 0));
-    const end   = new Date(day.setHours(23, 59, 59, 999));
-    where.scheduledAt = { gte: start, lte: end };
+    // Explicit UTC to avoid server timezone shifting the day boundary
+    where.scheduledAt = {
+      gte: new Date(`${date}T00:00:00.000Z`),
+      lte: new Date(`${date}T23:59:59.999Z`),
+    }
   }
 
   const [appointments, total] = await Promise.all([
@@ -133,8 +134,8 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
       take,
       skip,
       include: {
-        patient:  { select: { patientID: true, name: true, bloodGroup: true } },
-        staff:    { select: { name: true, role: true } },
+        patient: { select: { patientID: true, name: true, bloodGroup: true } },
+        staff: { select: { name: true, role: true } },
       },
     }),
     prisma.appointment.count({ where }),
@@ -145,7 +146,7 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
     pagination: {
       page: parseInt(page), limit: take, total,
       totalPages: Math.ceil(total / take),
-      hasMore:    skip + take < total,
+      hasMore: skip + take < total,
     },
   };
 };
@@ -157,24 +158,24 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
  */
 const getDoctorSchedule = async (staffId, { from, to } = {}) => {
   const cacheKey = `schedule:${staffId}`;
-  const cached   = await cacheGet(cacheKey);
+  const cached = await cacheGet(cacheKey);
   if (cached) return { schedule: cached, fromCache: true };
 
-  const now   = new Date();
+  const now = new Date();
   const start = from ? new Date(from) : now;
-  const end   = to
+  const end = to
     ? new Date(to)
     : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const appointments = await prisma.appointment.findMany({
     where: {
       staffId,
-      status:      { in: ["pending", "confirmed"] },
+      status: { in: ["pending", "confirmed"] },
       scheduledAt: { gte: start, lte: end },
     },
     orderBy: { scheduledAt: "asc" },
     include: {
-      patient:  { select: { patientID: true, name: true, bloodGroup: true, gender: true } },
+      patient: { select: { patientID: true, name: true, bloodGroup: true, gender: true } },
       hospital: { select: { name: true } },
     },
   });
@@ -215,14 +216,14 @@ const getPatientAppointments = async (patientID, { status, from, to } = {}) => {
   if (from || to) {
     where.scheduledAt = {};
     if (from) where.scheduledAt.gte = new Date(from);
-    if (to)   where.scheduledAt.lte = new Date(to);
+    if (to) where.scheduledAt.lte = new Date(to);
   }
 
   const appointments = await prisma.appointment.findMany({
     where,
     orderBy: { scheduledAt: "desc" },
     include: {
-      staff:    { select: { name: true, role: true } },
+      staff: { select: { name: true, role: true } },
       hospital: { select: { name: true, city: true } },
     },
   });
@@ -281,8 +282,8 @@ const updateStatus = async (appointmentId, staffId, hospitalId, { status, notes 
       ...(notes !== undefined && { notes }),
     },
     include: {
-      patient:  { select: { id: true, patientID: true, name: true } },
-      staff:    { select: { id: true, name: true, role: true } },
+      patient: { select: { id: true, patientID: true, name: true } },
+      staff: { select: { id: true, name: true, role: true } },
       hospital: { select: { name: true } },
     },
   });
@@ -321,10 +322,10 @@ const cancelAppointment = async (appointmentId, requestingUser) => {
 
   const cancelled = await prisma.appointment.update({
     where: { id: appointmentId },
-    data:  { status: "cancelled" },
+    data: { status: "cancelled" },
     include: {
-      patient:  { select: { id: true, patientID: true, name: true } },
-      staff:    { select: { id: true, name: true, role: true } },
+      patient: { select: { id: true, patientID: true, name: true } },
+      staff: { select: { id: true, name: true, role: true } },
       hospital: { select: { name: true } },
     },
   });
