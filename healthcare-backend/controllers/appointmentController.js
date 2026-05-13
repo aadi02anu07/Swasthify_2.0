@@ -1,5 +1,5 @@
 const appointmentService = require("../services/appointmentService");
-const notifier           = require("../socket/notifier");
+const notifier = require("../socket/notifier");
 
 /**
  * POST /api/appointments
@@ -16,22 +16,22 @@ const createAppointment = async (req, res, next) => {
 
     // Notify the patient their appointment was booked
     notifier.notify(io, {
-      userId:   patient.id,
+      userId: patient.id,
       userType: "patient",
-      title:    "Appointment Booked",
-      message:  `Your appointment with ${appointment.staff.name} is scheduled for ${new Date(appointment.scheduledAt).toLocaleString()}.`,
-      type:     "success",
-      data:     { appointmentId: appointment.id },
+      title: "Appointment Booked",
+      message: `Your appointment with ${appointment.staff.name} is scheduled for ${new Date(appointment.scheduledAt).toLocaleString()}.`,
+      type: "success",
+      data: { appointmentId: appointment.id },
     });
 
     // Notify the doctor a new appointment is in their schedule
     notifier.notify(io, {
-      userId:   appointment.staffId,
+      userId: appointment.staffId,
       userType: "staff",
-      title:    "New Appointment",
-      message:  `Appointment booked with patient ${patient.patientID} at ${new Date(appointment.scheduledAt).toLocaleString()}.`,
-      type:     "info",
-      data:     { appointmentId: appointment.id },
+      title: "New Appointment",
+      message: `Appointment booked with patient ${patient.patientID} at ${new Date(appointment.scheduledAt).toLocaleString()}.`,
+      type: "info",
+      data: { appointmentId: appointment.id },
     });
 
     res.status(201).json({
@@ -48,13 +48,25 @@ const createAppointment = async (req, res, next) => {
  */
 const getHospitalAppointments = async (req, res, next) => {
   try {
-    const { status, date, staffId, page, limit } = req.query;
+    // Patients cannot access this endpoint
+    if (req.user.type === "patient") {
+      return res.status(403).json({ error: "Access denied." })
+    }
+
+    const { status, date, staffId, page, limit } = req.query
+
+    // Hospital account: id IS the hospitalId
+    // Staff account: hospitalId is a separate field
+    const hospitalId = req.user.type === "hospital"
+      ? req.user.id
+      : req.user.hospitalId
+
     const result = await appointmentService.getHospitalAppointments(
-      req.user.hospitalId, { status, date, staffId, page, limit }
-    );
-    res.status(200).json(result);
-  } catch (err) { next(err); }
-};
+      hospitalId, { status, date, staffId, page, limit }
+    )
+    res.status(200).json(result)
+  } catch (err) { next(err) }
+}
 
 /**
  * GET /api/appointments/schedule
@@ -77,7 +89,7 @@ const getDoctorSchedule = async (req, res, next) => {
  */
 const getPatientAppointments = async (req, res, next) => {
   try {
-    const { patientID }    = req.params;
+    const { patientID } = req.params;
     const { status, from, to } = req.query;
 
     // Patients can only view their own appointments
@@ -117,25 +129,25 @@ const updateStatus = async (req, res, next) => {
 
     // Status-aware notification messages
     const messages = {
-      confirmed:  `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been confirmed.`,
-      completed:  `Your appointment with ${appointment.staff.name} is marked as completed.`,
-      cancelled:  `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been cancelled.`,
+      confirmed: `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been confirmed.`,
+      completed: `Your appointment with ${appointment.staff.name} is marked as completed.`,
+      cancelled: `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been cancelled.`,
     };
 
     notifier.appointmentUpdated(io, {
-      patientID:   appointment.patient.patientID,
+      patientID: appointment.patient.patientID,
       patientDbId: appointment.patient.id,
-      staffId:     appointment.staffId,
+      staffId: appointment.staffId,
       appointment,
     });
 
     notifier.notify(io, {
-      userId:   appointment.patient.id,
+      userId: appointment.patient.id,
       userType: "patient",
-      title:    `Appointment ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      message:  messages[status] || `Your appointment status has changed to ${status}.`,
-      type:     status === "cancelled" ? "warning" : "success",
-      data:     { appointmentId: appointment.id },
+      title: `Appointment ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      message: messages[status] || `Your appointment status has changed to ${status}.`,
+      type: status === "cancelled" ? "warning" : "success",
+      data: { appointmentId: appointment.id },
     });
 
     res.status(200).json({ message: `Appointment marked as ${status}.`, appointment });
@@ -153,9 +165,9 @@ const cancelAppointment = async (req, res, next) => {
     const io = req.app.get("io");
 
     notifier.appointmentUpdated(io, {
-      patientID:   appointment.patient.patientID,
+      patientID: appointment.patient.patientID,
       patientDbId: appointment.patient.id,
-      staffId:     appointment.staffId,
+      staffId: appointment.staffId,
       appointment,
     });
 
@@ -163,22 +175,22 @@ const cancelAppointment = async (req, res, next) => {
     if (req.user.type === "patient") {
       // Patient cancelled → notify the doctor
       notifier.notify(io, {
-        userId:   appointment.staffId,
+        userId: appointment.staffId,
         userType: "staff",
-        title:    "Appointment Cancelled",
-        message:  `Patient ${appointment.patient.name} cancelled their appointment on ${new Date(appointment.scheduledAt).toLocaleDateString()}.`,
-        type:     "warning",
-        data:     { appointmentId: appointment.id },
+        title: "Appointment Cancelled",
+        message: `Patient ${appointment.patient.name} cancelled their appointment on ${new Date(appointment.scheduledAt).toLocaleDateString()}.`,
+        type: "warning",
+        data: { appointmentId: appointment.id },
       });
     } else {
       // Staff cancelled → notify the patient
       notifier.notify(io, {
-        userId:   appointment.patient.id,
+        userId: appointment.patient.id,
         userType: "patient",
-        title:    "Appointment Cancelled",
-        message:  `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been cancelled by the hospital.`,
-        type:     "warning",
-        data:     { appointmentId: appointment.id },
+        title: "Appointment Cancelled",
+        message: `Your appointment with ${appointment.staff.name} on ${new Date(appointment.scheduledAt).toLocaleDateString()} has been cancelled by the hospital.`,
+        type: "warning",
+        data: { appointmentId: appointment.id },
       });
     }
 

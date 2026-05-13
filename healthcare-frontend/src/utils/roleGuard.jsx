@@ -7,11 +7,11 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!user) return <Navigate to="/login" replace />
 
   if (allowedRoles) {
-    const userRoles = [user.type, user.role].filter(Boolean)
-    const hasRole = allowedRoles.some(r => userRoles.includes(r))
+    // Check both user.type AND user.role — hospital admins have type:"hospital", no role field
+    const hasRole = allowedRoles.includes(user.type) || allowedRoles.includes(user.role)
     if (!hasRole) {
       if (user.type === 'patient') return <Navigate to="/patient" replace />
-      if (user.role === 'admin' || user.type === 'hospital') return <Navigate to="/admin" replace />
+      if (user.type === 'hospital' || user.role === 'admin') return <Navigate to="/admin" replace />
       return <Navigate to="/doctor" replace />
     }
   }
@@ -23,6 +23,6 @@ export const PublicRoute = ({ children }) => {
   const { user } = useAuthStore()
   if (!user) return children
   if (user.type === 'patient') return <Navigate to="/patient" replace />
-  if (user.role === 'admin' || user.type === 'hospital') return <Navigate to="/admin" replace />
+  if (user.type === 'hospital' || user.role === 'admin') return <Navigate to="/admin" replace />
   return <Navigate to="/doctor" replace />
 }

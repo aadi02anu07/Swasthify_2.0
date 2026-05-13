@@ -4,12 +4,12 @@ import {
   Building2, Calendar, Clock, CheckCircle, XCircle,
   Loader2, RefreshCw, UserPlus, Eye, EyeOff, Copy, Check
 } from 'lucide-react'
-import { getHospitalAppointments, updateAppointmentStatus, cancelAppointment } from '@/api/appointments'
-import { registerStaff } from '@/api/auth'
+import { getHospitalAppointments } from '@/api/appointments'
+import { registerStaff, registerPatient } from '@/api/auth'
+import { BLOOD_GROUPS } from '@/utils/constants'
 import useAuthStore from '@/store/authStore'
 import AppointmentCard from '@/components/appointments/AppointmentCard'
 import Modal from '@/components/ui/Modal'
-import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
 import { useForm } from 'react-hook-form'
@@ -25,6 +25,8 @@ const TABS = [
   { id: 'cancelled', label: 'Cancelled' },
 ]
 
+// ── Register Staff Modal ─────────────────────────────────────────────────────
+
 const staffSchema = z.object({
   staffID:  z.string().min(2, 'Required'),
   name:     z.string().min(2, 'Required'),
@@ -33,8 +35,8 @@ const staffSchema = z.object({
 })
 
 function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
-  const [showPassword, setShowPassword] = useState(false)
-  const [codeCopied, setCodeCopied]     = useState(false)
+  const [showPwd, setShowPwd]   = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(staffSchema),
@@ -44,7 +46,7 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
   const onSubmit = async (data) => {
     try {
       await registerStaff({ ...data, registrationCode })
-      toast.success(`${data.name} registered successfully as ${data.role}`)
+      toast.success(`${data.name} registered as ${data.role}`)
       reset()
       onClose()
     } catch (err) {
@@ -53,6 +55,7 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
   }
 
   const copyCode = () => {
+    if (!registrationCode) return
     navigator.clipboard.writeText(registrationCode)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
@@ -60,16 +63,16 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Register New Staff" size="md">
-      {/* Registration code display */}
-      <div className="mb-5 p-4 rounded-xl" style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+      <div className="mb-5 p-4 rounded-xl"
+        style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
         <p className="text-xs text-slate-500 mb-1">Hospital Registration Code</p>
         <div className="flex items-center justify-between gap-2">
-          <p className="mono text-blue-400 font-semibold text-lg">{registrationCode || '—'}</p>
+          <p className="mono text-blue-400 font-bold text-lg">{registrationCode || '—'}</p>
           <button onClick={copyCode} className="btn-secondary text-xs px-2 py-1">
             {codeCopied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
           </button>
         </div>
-        <p className="text-xs text-slate-500 mt-1">Staff can also self-register using this code</p>
+        <p className="text-xs text-slate-500 mt-1">Staff can also self-register using this code at the login page</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -96,15 +99,11 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
         <div>
           <label className="label">Password *</label>
           <div className="relative">
-            <input
-              {...register('password')}
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Min 6 characters"
-              className="input-field pr-10"
-            />
-            <button type="button" onClick={() => setShowPassword(!showPassword)}
+            <input {...register('password')} type={showPwd ? 'text' : 'password'}
+              placeholder="Min 6 characters" className="input-field pr-10" />
+            <button type="button" onClick={() => setShowPwd(!showPwd)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
           {errors.password && <p className="text-xs text-rose-400 mt-1">{errors.password.message}</p>}
@@ -120,17 +119,16 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
   )
 }
 
-// ── Also add patient registration modal ─────────────────────────────────────
-
-import { BLOOD_GROUPS } from '@/utils/constants'
-import { registerPatient } from '@/api/auth'
+// ── Register Patient Modal ───────────────────────────────────────────────────
 
 function RegisterPatientModal({ isOpen, onClose }) {
-  const [showPassword, setShowPassword] = useState(false)
-  const [createdID, setCreatedID]       = useState(null)
-  const [copied, setCopied]             = useState(false)
-  const [loading, setLoading]           = useState(false)
-  const [form, setForm] = useState({ name: '', dob: '', bloodGroup: '', gender: '', phone: '', password: '' })
+  const [showPwd, setShowPwd]   = useState(false)
+  const [createdID, setCreatedID] = useState(null)
+  const [copied, setCopied]     = useState(false)
+  const [loading, setLoading]   = useState(false)
+  const [form, setForm] = useState({
+    name: '', dob: '', bloodGroup: '', gender: '', phone: '', password: ''
+  })
 
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -150,6 +148,7 @@ function RegisterPatientModal({ isOpen, onClose }) {
 
   const handleClose = () => {
     setCreatedID(null)
+    setCopied(false)
     setForm({ name: '', dob: '', bloodGroup: '', gender: '', phone: '', password: '' })
     onClose()
   }
@@ -169,10 +168,9 @@ function RegisterPatientModal({ isOpen, onClose }) {
           </div>
           <p className="text-slate-300 font-medium">Patient registered successfully!</p>
           <div className="p-4 rounded-xl" style={{ background: 'rgba(37,99,235,0.08)', border: '2px dashed rgba(59,130,246,0.3)' }}>
-            <p className="text-xs text-slate-500 mb-1">Patient ID</p>
+            <p className="text-xs text-slate-500 mb-1">Patient ID — share this with the patient</p>
             <p className="mono text-2xl font-bold text-blue-400">{createdID}</p>
           </div>
-          <p className="text-slate-500 text-sm">Share this ID with the patient — they'll need it to log in.</p>
           <div className="flex gap-3">
             <button onClick={copyID} className="btn-secondary flex-1">
               {copied ? <><Check size={13} /> Copied!</> : <><Copy size={13} /> Copy ID</>}
@@ -184,7 +182,7 @@ function RegisterPatientModal({ isOpen, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">Full Name *</label>
-            <input value={form.name} onChange={update('name')} placeholder="Rahul Mehta" className="input-field" />
+            <input value={form.name} onChange={update('name')} placeholder="Patient Name" className="input-field" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -219,11 +217,11 @@ function RegisterPatientModal({ isOpen, onClose }) {
           <div>
             <label className="label">Password *</label>
             <div className="relative">
-              <input type={showPassword ? 'text' : 'password'} value={form.password}
+              <input type={showPwd ? 'text' : 'password'} value={form.password}
                 onChange={update('password')} placeholder="Min 8 characters" className="input-field pr-11" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)}
+              <button type="button" onClick={() => setShowPwd(!showPwd)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
           </div>
@@ -239,11 +237,11 @@ function RegisterPatientModal({ isOpen, onClose }) {
   )
 }
 
-// ── Main Dashboard ───────────────────────────────────────────────────────────
+// ── Stat Card ────────────────────────────────────────────────────────────────
 
 const StatCard = ({ icon: Icon, label, value, color, delay }) => (
-  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
-    className="stat-card">
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }} className="stat-card">
     <div className="flex items-center justify-between">
       <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
       <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}18` }}>
@@ -254,20 +252,26 @@ const StatCard = ({ icon: Icon, label, value, color, delay }) => (
   </motion.div>
 )
 
+// ── Main Dashboard ───────────────────────────────────────────────────────────
+
 export default function HospitalDashboard() {
   const { user } = useAuthStore()
+
   const [appointments, setAppointments] = useState([])
-  const [allStats, setAllStats]         = useState({ today: 0, pending: 0, confirmed: 0, cancelled: 0 })
-  const [loading, setLoading]           = useState(true)
-  const [tab, setTab]                   = useState('')
-  const [page, setPage]                 = useState(1)
-  const [pagination, setPagination]     = useState(null)
+  const [allStats, setAllStats] = useState({ today: 0, pending: 0, confirmed: 0, cancelled: 0 })
+  const [loading, setLoading]   = useState(true)
+  const [fetchError, setFetchError] = useState(null)
+  const [tab, setTab]           = useState('')
+  const [page, setPage]         = useState(1)
+  const [pagination, setPagination] = useState(null)
   const [staffModalOpen, setStaffModalOpen]     = useState(false)
   const [patientModalOpen, setPatientModalOpen] = useState(false)
 
+  // Hospital admins have type:"hospital" and id IS the hospitalId
+  // Staff admins have type:"staff", role:"admin" and hospitalId field
+  // Either way the backend reads hospitalId from the JWT — we just need to pass the token (axios does this automatically)
   const registrationCode = user?.registrationCode || user?.hospital?.registrationCode
 
-  // Fetch stats from all appointments (no status filter)
   const fetchStats = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0]
@@ -279,24 +283,34 @@ export default function HospitalDashboard() {
         confirmed: all.filter((a) => a.status === 'confirmed').length,
         cancelled: all.filter((a) => a.status === 'cancelled').length,
       })
-    } catch {}
+    } catch (err) {
+      console.error('Stats fetch failed:', err.response?.status, err.response?.data)
+    }
   }, [])
 
-  // Fetch filtered/paginated list for table
   const fetchAppointments = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const params = { limit: 20, page }
       if (tab) params.status = tab
       const res = await getHospitalAppointments(params)
+      console.log('Appointments response:', res.data)
       setAppointments(res.data.appointments || [])
       setPagination(res.data.pagination)
-    } catch { toast.error('Failed to load appointments') }
-    finally { setLoading(false) }
+    } catch (err) {
+      console.error('Appointments fetch failed:', err.response?.status, err.response?.data)
+      setFetchError(err.response?.data?.message || 'Failed to load appointments')
+      toast.error('Failed to load appointments')
+    } finally {
+      setLoading(false)
+    }
   }, [tab, page])
 
   useEffect(() => { setPage(1) }, [tab])
   useEffect(() => { fetchAppointments(); fetchStats() }, [fetchAppointments])
+
+  const handleRefresh = () => { fetchAppointments(); fetchStats() }
 
   return (
     <div className="space-y-6">
@@ -310,11 +324,11 @@ export default function HospitalDashboard() {
             </h1>
           </div>
           <p className="text-slate-400 text-sm">
-            {user?.hospital?.city || user?.city} · Admin view
+            {user?.hospital?.city || user?.city || ''} · Admin view
           </p>
           {registrationCode && (
             <p className="text-xs text-slate-500 mt-1">
-              Registration code: <span className="mono text-blue-400">{registrationCode}</span>
+              Registration code: <span className="mono text-blue-400 font-medium">{registrationCode}</span>
             </p>
           )}
         </div>
@@ -325,7 +339,7 @@ export default function HospitalDashboard() {
           <button onClick={() => setStaffModalOpen(true)} className="btn-primary">
             <UserPlus size={14} /> Register Staff
           </button>
-          <button onClick={() => { fetchAppointments(); fetchStats() }} className="btn-secondary">
+          <button onClick={handleRefresh} className="btn-secondary w-9 h-9 p-0 justify-center">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
@@ -348,8 +362,7 @@ export default function HospitalDashboard() {
               tab === id
                 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/20'
                 : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
+            }`}>
             {label}
             {id === 'pending' && allStats.pending > 0 && (
               <span className="ml-1.5 mono text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">
@@ -365,14 +378,24 @@ export default function HospitalDashboard() {
         <div className="flex justify-center py-16">
           <Loader2 size={24} className="animate-spin text-slate-500" />
         </div>
+      ) : fetchError ? (
+        <div className="glass-card p-8 text-center">
+          <p className="text-rose-400 font-medium mb-1">Failed to load appointments</p>
+          <p className="text-slate-500 text-sm mb-4">{fetchError}</p>
+          <button onClick={handleRefresh} className="btn-secondary">Try again</button>
+        </div>
       ) : appointments.length === 0 ? (
-        <EmptyState icon={Calendar} title="No appointments"
-          description={tab ? `No ${tab} appointments found.` : 'No appointments yet.'} />
+        <div className="glass-card">
+          <EmptyState
+            icon={Calendar}
+            title="No appointments found"
+            description={tab ? `No ${tab} appointments. Try a different filter.` : 'No appointments have been booked yet.'}
+          />
+        </div>
       ) : (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
           {appointments.map((appt) => (
-            <AppointmentCard key={appt.id} appointment={appt}
-              onRefresh={() => { fetchAppointments(); fetchStats() }} />
+            <AppointmentCard key={appt.id} appointment={appt} onRefresh={handleRefresh} />
           ))}
         </motion.div>
       )}
