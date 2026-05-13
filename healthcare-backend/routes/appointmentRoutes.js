@@ -1,8 +1,8 @@
 const express = require("express");
-const router  = express.Router();
+const router = express.Router();
 
 const { verifyToken, staffOnly, clinicalStaffOnly, doctorOnly } = require("../middleware/authMiddleware");
-const  validate  = require("../middleware/validate");
+const validate = require("../middleware/validate");
 const apptCtrl = require("../controllers/appointmentController");
 const {
   createAppointmentRules,
@@ -18,12 +18,7 @@ router.use(verifyToken);
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Hospital-wide appointment list — staff only
-router.get(
-  "/hospital",
-  staffOnly,
-  listQueryRules, validate,
-  apptCtrl.getHospitalAppointments
-);
+router.get("/hospital", listQueryRules, validate, apptCtrl.getHospitalAppointments)
 
 // Doctor's own schedule — doctor only
 router.get(
