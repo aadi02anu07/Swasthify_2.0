@@ -41,17 +41,10 @@ app.use(cors({
   credentials: true,
 }));
 
-// Trust the first proxy hop (Render's load balancer).
-// Without this, express-rate-limit sees every request as coming from the
-// same IP (the LB) and rate-limits ALL users together → 429/502 cascade.
-app.set("trust proxy", 1);
-
 // Global rate limiter — 100 req / 15 min per IP
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max:      100,
-  standardHeaders: true,
-  legacyHeaders:   false,
   message:  { error: "Too many requests, please try again later." },
 }));
 
