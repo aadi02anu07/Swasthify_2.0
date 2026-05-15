@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Zap, BarChart3, AlertCircle, Lightbulb, Info } from 'lucide-react'
+import { Brain, Zap, BarChart3, AlertCircle, Lightbulb, Info, RefreshCw, Clock, Timer } from 'lucide-react'
 import { analyzeVitals, analyzeChart } from '@/api/ai'
 import { getUrgencyConfig, getTrendConfig } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
@@ -21,16 +21,44 @@ const loadingMessages = [
   'Generating clinical insights…',
 ]
 
+const RETRY_COUNTDOWN_SEC = 30
+
 export default function AIAnalysisPanel({ patientID }) {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
+  // error is now an object: { type: 'waking_up' | 'rate_limited' | 'failed', message: string }
   const [error, setError] = useState(null)
+  const [countdown, setCountdown] = useState(0)
+  const lastTypeRef = useRef('vitals')     // remember which analysis was attempted
+  const retryCountRef = useRef(0)          // track how many auto-retries we've done
 
-  const runAnalysis = async (type) => {
+  // Countdown timer — auto-retries once when it hits 0
+  useEffect(() => {
+    if (countdown <= 0) return
+    const id = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(id)
+          // Auto-retry once when countdown reaches 0
+          if (retryCountRef.current < 1) {
+            retryCountRef.current += 1
+            runAnalysis(lastTypeRef.current)
+          }
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [countdown]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runAnalysis = useCallback(async (type) => {
+    lastTypeRef.current = type
     setLoading(true)
     setAnalysis(null)
     setError(null)
+    setCountdown(0)
 
     let msgIdx = 0
     setLoadingMsg(loadingMessages[0])
@@ -44,28 +72,40 @@ export default function AIAnalysisPanel({ patientID }) {
         ? await analyzeVitals(patientID)
         : await analyzeChart(patientID)
       setAnalysis(res.data.analysis)
+      retryCountRef.current = 0 // reset on success
       toast.success('Analysis complete')
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.message || err.message
 
-      let friendlyError
-      if (status === 429) {
-        friendlyError = 'Rate limit reached — AI analysis is limited to 10 requests per 15 minutes. Please wait a few minutes and try again.'
-      } else if (status === 503 || status === 502) {
-        friendlyError = 'AI service is temporarily unavailable. The backend may still be waking up — try again in 30 seconds.'
+      if (status === 502 || status === 503 || status === 504) {
+        setError({ type: 'waking_up', message: msg || 'Backend is waking up.' })
+        // Only start countdown if we haven't auto-retried yet
+        if (retryCountRef.current < 1) {
+          setCountdown(RETRY_COUNTDOWN_SEC)
+          toast.error('Backend is waking up — retrying in 30s…')
+        } else {
+          toast.error('AI service still unavailable — try again manually')
+        }
+      } else if (status === 429) {
+        setError({ type: 'rate_limited', message: 'Rate limit reached — AI analysis is limited to 10 requests per 15 minutes. Please wait a few minutes and try again.' })
+        toast.error('Rate limit reached')
       } else if (status === 403) {
-        friendlyError = 'AI analysis is restricted to clinical staff only.'
+        setError({ type: 'failed', message: 'AI analysis is restricted to clinical staff only.' })
+        toast.error('Access restricted')
       } else {
-        friendlyError = msg || 'AI analysis failed. Please try again.'
+        setError({ type: 'failed', message: msg || 'AI analysis failed. Please try again.' })
+        toast.error(msg?.split('.')[0] || 'Analysis failed')
       }
-
-      setError(friendlyError)
-      toast.error(friendlyError.split('.')[0]) // show first sentence in toast
     } finally {
       clearInterval(interval)
       setLoading(false)
     }
+  }, [patientID])
+
+  const handleManualRetry = () => {
+    retryCountRef.current = 0 // reset so countdown can fire again
+    runAnalysis(lastTypeRef.current)
   }
 
   const urgencyConfig = analysis ? getUrgencyConfig(analysis.urgency) : null
@@ -82,7 +122,7 @@ export default function AIAnalysisPanel({ patientID }) {
       {/* Action buttons */}
       <div className="flex gap-3">
         <button
-          onClick={() => runAnalysis('vitals')}
+          onClick={() => { retryCountRef.current = 0; runAnalysis('vitals') }}
           disabled={loading}
           className="btn-primary flex-1 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
@@ -91,7 +131,7 @@ export default function AIAnalysisPanel({ patientID }) {
           Analyze Vitals
         </button>
         <button
-          onClick={() => runAnalysis('chart')}
+          onClick={() => { retryCountRef.current = 0; runAnalysis('chart') }}
           disabled={loading}
           className="btn-primary flex-1 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, #1d4ed8, #0f766e)' }}
@@ -121,15 +161,76 @@ export default function AIAnalysisPanel({ patientID }) {
           </motion.div>
         )}
 
-        {/* Error state */}
-        {error && !loading && (
+        {/* Error: Backend waking up — with countdown */}
+        {error?.type === 'waking_up' && !loading && (
+          <motion.div key="waking" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+            <div className="flex items-start gap-3">
+              <Timer size={18} className="text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-amber-300 font-medium text-sm mb-1">Backend is Waking Up</p>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  {countdown > 0
+                    ? `The server is starting up after being idle. Retrying automatically in ${countdown}s…`
+                    : retryCountRef.current >= 1
+                      ? 'Auto-retry failed — the server may need more time. You can try again manually.'
+                      : error.message
+                  }
+                </p>
+                {/* Countdown progress bar */}
+                {countdown > 0 && (
+                  <div className="mt-3 h-1.5 rounded-full bg-navy-700/60 overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400"
+                      initial={{ width: '100%' }}
+                      animate={{ width: '0%' }}
+                      transition={{ duration: countdown, ease: 'linear' }}
+                    />
+                  </div>
+                )}
+                {/* Manual retry button — shown after auto-retry or when countdown is done */}
+                {countdown === 0 && (
+                  <button
+                    onClick={handleManualRetry}
+                    className="mt-3 flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium"
+                  >
+                    <RefreshCw size={12} /> Try Again
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Error: Rate limited */}
+        {error?.type === 'rate_limited' && !loading && (
+          <motion.div key="ratelimit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="p-5 rounded-2xl border border-violet-500/30 bg-violet-500/5">
+            <div className="flex items-start gap-3">
+              <Clock size={18} className="text-violet-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-violet-300 font-medium text-sm mb-1">Rate Limit Reached</p>
+                <p className="text-slate-400 text-sm leading-relaxed">{error.message}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Error: Generic failure */}
+        {error?.type === 'failed' && !loading && (
           <motion.div key="error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="p-5 rounded-2xl border border-rose-500/30 bg-rose-500/5">
             <div className="flex items-start gap-3">
               <AlertCircle size={18} className="text-rose-400 shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <p className="text-rose-300 font-medium text-sm mb-1">Analysis Failed</p>
-                <p className="text-slate-400 text-sm leading-relaxed">{error}</p>
+                <p className="text-slate-400 text-sm leading-relaxed">{error.message}</p>
+                <button
+                  onClick={handleManualRetry}
+                  className="mt-3 flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 transition-colors font-medium"
+                >
+                  <RefreshCw size={12} /> Try Again
+                </button>
               </div>
             </div>
           </motion.div>
