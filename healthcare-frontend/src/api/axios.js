@@ -58,6 +58,8 @@ api.interceptors.response.use(
           localStorage.setItem('accessToken', data.accessToken)
           localStorage.setItem('refreshToken', data.refreshToken)
           original.headers.Authorization = `Bearer ${data.accessToken}`
+          // Ensure POST requests with no body retry correctly
+          original.data = original.data || null
           return api(original)
         } catch {
           clearAuthAndRedirect()
