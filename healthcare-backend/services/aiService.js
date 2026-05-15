@@ -7,11 +7,11 @@ const { cacheSet, cacheGet } = require("../config/redis");
 // gemini-1.5-flash: fastest model, generous free tier, sufficient for structured analysis.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
+  model: "gemini-1.5-flash-latest",
   generationConfig: {
-    temperature: 0.3,  // lower = more consistent, less creative — good for clinical text
-    topP: 0.8,
-    maxOutputTokens: 2000,
+    temperature:     0.2,
+    topP:            0.8,
+    maxOutputTokens: 2048,
   },
 });
 
@@ -34,6 +34,8 @@ STRICT RULES:
 4. Flag any pattern that warrants urgent attention — err on the side of caution.
 5. Respond ONLY in valid JSON. No preamble, no markdown fences, no explanation outside the JSON.
 6. If data is insufficient for a meaningful observation, say so clearly in the summary.
+7. Keep ALL string values under 150 characters. Be concise.
+8. The suggestionsForDoctor array must have a maximum of 4 items.
 `.trim();
 
 const RESPONSE_SCHEMA = `
@@ -75,18 +77,18 @@ const findPatient = async (patientID) => {
 const computeAge = (dob) =>
   Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 
-/** Parse Gemini's response safely — strips any accidental markdown fences */
+/** Parse Gemini's response safely — strips markdown fences and any preamble/postamble */
 const parseGeminiJSON = (text) => {
-  // Strip markdown fences
   let cleaned = text
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();
 
-  // Find the first { and last } to extract just the JSON object
+  // Extract just the JSON object by finding outermost braces.
+  // This handles any preamble or postamble Gemini adds despite being told not to.
   const start = cleaned.indexOf("{");
   const end   = cleaned.lastIndexOf("}");
-  if (start !== -1 && end !== -1) {
+  if (start !== -1 && end !== -1 && end > start) {
     cleaned = cleaned.slice(start, end + 1);
   }
 
@@ -125,7 +127,8 @@ const callGemini = async (userPrompt) => {
   try {
     return parseGeminiJSON(raw);
   } catch {
-    console.error("Gemini returned unparseable JSON:", raw);
+    console.error("Gemini returned unparseable JSON. Raw response length:", raw?.length);
+    console.error("First 500 chars:", raw?.slice(0, 500));
     throw { status: 502, message: "AI returned an unexpected response format. Please try again." };
   }
 };
