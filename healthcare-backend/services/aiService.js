@@ -7,11 +7,11 @@ const { cacheSet, cacheGet } = require("../config/redis");
 // gemini-1.5-flash: fastest model, generous free tier, sufficient for structured analysis.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash-latest",
+  model: "gemini-2.5-flash",
   generationConfig: {
-    temperature:     0.2,
-    topP:            0.8,
-    maxOutputTokens: 2048,
+    temperature: 0.3,  // lower = more consistent, less creative — good for clinical text
+    topP: 0.8,
+    maxOutputTokens: 2000,
   },
 });
 
@@ -34,8 +34,6 @@ STRICT RULES:
 4. Flag any pattern that warrants urgent attention — err on the side of caution.
 5. Respond ONLY in valid JSON. No preamble, no markdown fences, no explanation outside the JSON.
 6. If data is insufficient for a meaningful observation, say so clearly in the summary.
-7. Keep ALL string values under 150 characters. Be concise.
-8. The suggestionsForDoctor array must have a maximum of 4 items.
 `.trim();
 
 const RESPONSE_SCHEMA = `
@@ -88,7 +86,7 @@ const parseGeminiJSON = (text) => {
   // Find the first { and last } to extract just the JSON object
   const start = cleaned.indexOf("{");
   const end   = cleaned.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) {
+  if (start !== -1 && end !== -1) {
     cleaned = cleaned.slice(start, end + 1);
   }
 
@@ -127,8 +125,7 @@ const callGemini = async (userPrompt) => {
   try {
     return parseGeminiJSON(raw);
   } catch {
-    console.error("Gemini returned unparseable JSON. Raw response length:", raw?.length);
-    console.error("First 500 chars:", raw?.slice(0, 500));
+    console.error("Gemini returned unparseable JSON:", raw);
     throw { status: 502, message: "AI returned an unexpected response format. Please try again." };
   }
 };
