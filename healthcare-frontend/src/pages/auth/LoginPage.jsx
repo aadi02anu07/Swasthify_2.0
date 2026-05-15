@@ -210,10 +210,33 @@ export default function LoginPage() {
 
           {/* Test credentials */}
           <div className="mt-8 p-4 rounded-xl" style={{ background: 'rgba(30,58,95,0.2)', border: '1px solid rgba(30,58,95,0.3)' }}>
-            <p className="text-xs text-slate-500 mb-2 font-medium">Test credentials</p>
-            <div className="space-y-1 text-xs text-slate-500">
-              <p>Doctor: <span className="mono text-slate-400">DOC-001</span> / <span className="mono text-slate-400">Doctor@123</span></p>
-              <p>Patient: <span className="mono text-slate-400">PAT-2026-0001</span> / <span className="mono text-slate-400">Patient@123</span></p>
+            <p className="text-xs text-slate-500 mb-3 font-medium uppercase tracking-wider">Quick Login — Test Credentials</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Doctor',        roleId: 'staff',    id: 'DOC-001',          password: 'Doctor@123',    icon: '🩺' },
+                { label: 'Nurse',         roleId: 'staff',    id: 'NUR-001',          password: 'Nurse@123',     icon: '💊' },
+                { label: 'Patient',       roleId: 'patient',  id: 'PAT-2026-0001',    password: 'Patient@123',   icon: '🏥' },
+                { label: 'Hospital Admin',roleId: 'hospital', id: 'admin@apollo-test.com', password: 'Apollo@123', icon: '🛡️' },
+              ].map((cred) => (
+                <button
+                  key={cred.label}
+                  type="button"
+                  onClick={() => {
+                    setRole(cred.roleId)
+                    setForm({ id: cred.id, password: cred.password })
+                  }}
+                  className="flex flex-col items-start gap-1 p-3 rounded-xl text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    background: 'rgba(13,27,46,0.6)',
+                    border: '1px solid rgba(30,58,95,0.5)',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(59,130,246,0.5)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(30,58,95,0.5)'}
+                >
+                  <span className="text-sm">{cred.icon} <span className="text-slate-300 font-medium text-xs">{cred.label}</span></span>
+                  <span className="mono text-[10px] text-slate-500 truncate w-full">{cred.id}</span>
+                </button>
+              ))}
             </div>
           </div>
         </motion.div>
