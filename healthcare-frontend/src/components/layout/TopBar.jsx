@@ -26,7 +26,7 @@ export default function TopBar() {
 
   return (
     <header className="h-14 border-b border-navy-600/30 flex items-center px-6 gap-4"
-      style={{ background: 'rgba(5, 11, 26, 0.8)', backdropFilter: 'blur(10px)' }}>
+      style={{ background: 'rgba(5, 11, 26, 0.8)', backdropFilter: 'blur(10px)', position: 'relative', zIndex: 40 }}>
 
       {isStaff && (
         <form onSubmit={handleSearch} className="flex-1 max-w-xs">
