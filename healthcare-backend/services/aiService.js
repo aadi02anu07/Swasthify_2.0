@@ -7,7 +7,7 @@ const { cacheSet, cacheGet } = require("../config/redis");
 // gemini-1.5-flash: fastest model, generous free tier, sufficient for structured analysis.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
+  model: "gemini-1.5-flash-latest",
   generationConfig: {
     temperature: 0.3,  // lower = more consistent, less creative — good for clinical text
     topP: 0.8,
