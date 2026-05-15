@@ -23,8 +23,21 @@ app.set("io", io); // controllers access via req.app.get("io")
 
 // ── Core Middleware ───────────────────────────────────────────────────────────
 app.use(express.json());
+
+// CORS: allow both Vercel (prod) and localhost (dev).
+// A callback is required when credentials:true — you cannot use a wildcard with credentials.
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,    // https://swasthify-v2.vercel.app (set in .env)
+  "http://localhost:5173",     // Vite dev server
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+].filter(Boolean);
+
 app.use(cors({
-  origin:      process.env.FRONTEND_URL || "*",
+  origin: (origin, callback) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed.`));
+  },
   credentials: true,
 }));
 

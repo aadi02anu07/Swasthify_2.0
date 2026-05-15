@@ -1,0 +1,16 @@
+{
+  "name": "Swasthify",
+  "short_name": "Swasthify",
+  "description": "Multi-hospital patient health record network",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060d18",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

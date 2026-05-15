@@ -5,10 +5,13 @@ const { verifyRefreshToken, generateAccessToken, generateRefreshToken } = requir
 const { getRefreshToken, saveRefreshToken, deleteRefreshToken } = require("../config/redis");
 
 // ── Cookie helper ─────────────────────────────────────────────────────────────
+// sameSite:"strict" silently blocks cookies on cross-origin requests
+// (Vercel → Render). Must use "none" + secure:true in production.
+const isProd = process.env.NODE_ENV === "production";
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure:   process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  secure:   isProd,
+  sameSite: isProd ? "none" : "lax",
   maxAge:   30 * 24 * 60 * 60 * 1000, // 30 days in ms
 };
 
