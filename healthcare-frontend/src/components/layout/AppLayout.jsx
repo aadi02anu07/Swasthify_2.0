@@ -8,12 +8,13 @@ import { initSocket, disconnectSocket } from '@/socket/socket'
 import { API_URL } from '@/utils/constants'
 import toast from 'react-hot-toast'
 
-// Ping the backend every 10 minutes to prevent Render cold starts
+// Ping the backend health-check every 10 minutes to prevent Render free-tier cold starts.
+// Must use the public GET / endpoint — NOT an auth endpoint — to avoid spurious 401 errors.
 const useKeepAlive = () => {
   useEffect(() => {
-    const ping = () => fetch(`${API_URL}/api/auth/refresh`, { method: 'POST', body: JSON.stringify({}), headers: { 'Content-Type': 'application/json' } }).catch(() => {})
-    ping() // ping on mount
-    const id = setInterval(ping, 10 * 60 * 1000) // every 10 min
+    const ping = () => fetch(`${API_URL}/`).catch(() => {})
+    ping() // ping immediately on mount
+    const id = setInterval(ping, 10 * 60 * 1000) // then every 10 min
     return () => clearInterval(id)
   }, [])
 }

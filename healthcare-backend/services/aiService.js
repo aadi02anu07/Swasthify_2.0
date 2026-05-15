@@ -95,16 +95,29 @@ const parseGeminiJSON = (text) => {
 
 /**
  * Call Gemini with the given prompt and parse the structured JSON response.
- * Throws a clean error if parsing fails so the endpoint returns 502, not 500.
+ * Wraps the API call in a 25s Promise.race — Render free tier cold starts can
+ * eat 15-20s, so without a timeout the request hangs until Render's hard 30s
+ * kill and the client sees a generic 502. With Promise.race we get a clean 504.
  */
+const GEMINI_TIMEOUT_MS = 25_000;
+
 const callGemini = async (userPrompt) => {
   const fullPrompt = `${SYSTEM_CONTEXT}\n\n${userPrompt}\n\nRespond with this exact JSON schema:\n${RESPONSE_SCHEMA}`;
 
+  const geminiCall   = model.generateContent(fullPrompt);
+  const timeoutGuard = new Promise((_, reject) =>
+    setTimeout(
+      () => reject({ status: 504, message: "AI analysis timed out — the server is still waking up. Please try again in 30 seconds." }),
+      GEMINI_TIMEOUT_MS
+    )
+  );
+
   let raw;
   try {
-    const result = await model.generateContent(fullPrompt);
+    const result = await Promise.race([geminiCall, timeoutGuard]);
     raw = result.response.text();
   } catch (err) {
+    if (err.status) throw err; // re-throw our own structured errors (timeout)
     console.error("Gemini API error:", err.message);
     throw { status: 502, message: "AI service is temporarily unavailable. Please try again shortly." };
   }
