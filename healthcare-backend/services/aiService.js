@@ -11,7 +11,7 @@ const model = genAI.getGenerativeModel({
   generationConfig: {
     temperature: 0.3,  // lower = more consistent, less creative — good for clinical text
     topP: 0.8,
-    maxOutputTokens: 2000,
+    maxOutputTokens: 9000,
   },
 });
 
@@ -116,11 +116,14 @@ const callGemini = async (userPrompt) => {
   try {
     const result = await Promise.race([geminiCall, timeoutGuard]);
     raw = result.response.text();
+    console.log("🔍 Gemini raw output:", raw);
   } catch (err) {
+    console.error("🔴 Gemini call failed:", JSON.stringify(err, null, 2)); // ADD THIS
     if (err.status) throw err; // re-throw our own structured errors (timeout)
     console.error("Gemini API error:", err.message);
     throw { status: 502, message: "AI service is temporarily unavailable. Please try again shortly." };
   }
+  
 
   try {
     return parseGeminiJSON(raw);
