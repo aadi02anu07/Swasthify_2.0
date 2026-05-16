@@ -25,8 +25,8 @@ export default function TopBar() {
   }
 
   return (
-    <header className="h-14 border-b border-navy-600/30 flex items-center px-6 gap-4"
-      style={{ background: 'rgba(5, 11, 26, 0.8)', backdropFilter: 'blur(10px)', position: 'relative', zIndex: 40 }}>
+<header className="h-14 border-b border-navy-600/30 flex items-center px-6 gap-4 relative z-50"
+  style={{ background: 'rgba(5,11,26,0.8)', backdropFilter: 'blur(10px)' }}>
 
       {isStaff && (
         <form onSubmit={handleSearch} className="flex-1 max-w-xs">
@@ -67,7 +67,7 @@ export default function TopBar() {
               initial={{ opacity: 0, y: 6, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.96 }}
-              className="absolute right-0 top-11 w-80 glass-card-elevated shadow-2xl z-50 overflow-hidden"
+              className="absolute right-0 top-11 w-80 glass-card-elevated shadow-2xl z-100 overflow-hidden"
             >
               <div className="p-3 border-b border-navy-600/30 flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-200">Notifications</p>

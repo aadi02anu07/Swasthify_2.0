@@ -76,8 +76,8 @@ const listQueryRules = [
 
   query("limit")
     .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage("limit must be between 1 and 100."),
+    .isInt({ min: 1, max: 500 })
+    .withMessage("limit must be between 1 and 500."),
 ];
 
 module.exports = { createAppointmentRules, updateStatusRules, listQueryRules };
