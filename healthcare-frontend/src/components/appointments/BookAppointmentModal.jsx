@@ -26,7 +26,7 @@ export default function BookAppointmentModal({ isOpen, onClose, defaultPatientID
       const payload = {
         patientID: data.patientID,
         staffId: user.id,
-        scheduledAt: new Date(data.scheduledAt).toISOString(),
+        scheduledAt: data.scheduledAt + ':00.000+05:30',
         reason: data.reason,
         notes: data.notes || undefined,
       }
