@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/activity.svg" alt="Swasthify Logo" width="120" height="120">
+  <img src="./healthcare-frontend/public/favicon.ico" alt="Swasthify Logo" width="120" height="120">
   
   <h1>Swasthify 2.0</h1>
   
@@ -20,7 +20,7 @@
 
 ## 🌟 Overview
 
-**Swasthify** is a multi-tenant healthcare platform that solves the problem of fragmented medical histories. By treating each hospital as a tenant on a unified network, Swasthify ensures that a patient's medical records, vitals, and appointment history follow them wherever they go. 
+**Swasthify** is a multi-tenant healthcare platform that solves the problem of fragmented medical histories. By treating each hospital as a tenant on a unified network, Swasthify ensures that a patient's medical records, vitals, and appointment history follow them wherever they go.
 
 Equipped with a highly resilient backend and a clinical decision support AI powered by Google's Gemini, Swasthify surfaces critical insights for healthcare professionals instantly, drastically reducing diagnosis times and preventing clinical oversights.
 
@@ -44,18 +44,19 @@ Equipped with a highly resilient backend and a clinical decision support AI powe
 graph TD
     Client[React + Vite Frontend] -->|REST / HTTPS| Nginx[Vercel Edge Network]
     Client -->|WebSocket| WS[Socket.io Server]
-    
+
     Nginx --> API[Express.js Backend]
     WS --> API
-    
+
     API -->|Prisma ORM| DB[(PostgreSQL)]
     API -->|ioredis| Cache[(Redis Cache)]
-    
+
     API -->|Prompt Context| Gemini[Google Gemini API]
     Gemini -->|Clinical Insights| API
 ```
 
 ### Data Flow Highlights:
+
 - **Aggressive Caching:** Expensive AI computations are aggressively cached in Redis (`AI_CACHE_TTL`), utilizing composite keys tied to the latest database mutation timestamps to ensure data freshness.
 - **Timeout Safety:** AI endpoints are wrapped in `Promise.race` blocks to handle upstream cold-start latencies seamlessly without leaving the client hanging.
 
@@ -64,6 +65,7 @@ graph TD
 ## 💻 Tech Stack
 
 ### Frontend (Vercel)
+
 - **Framework:** React 18 + Vite
 - **Styling:** Tailwind CSS + Framer Motion
 - **State Management:** Zustand
@@ -72,6 +74,7 @@ graph TD
 - **Icons:** Lucide React
 
 ### Backend (Render)
+
 - **Runtime:** Node.js + Express.js
 - **Database:** PostgreSQL with Prisma ORM
 - **Cache & Session:** Redis (`ioredis`)
@@ -84,6 +87,7 @@ graph TD
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/en/) (v18+)
 - [PostgreSQL](https://www.postgresql.org/)
 - [Redis](https://redis.io/)
@@ -135,18 +139,22 @@ npm run dev
 
 ## 🧠 AI Integration Deep Dive
 
-The platform integrates **Google's Gemini 2.5 Flash** model strictly as a **Clinical Decision Support System (CDSS)**. 
+The platform integrates **Google's Gemini 2.5 Flash** model strictly as a **Clinical Decision Support System (CDSS)**.
 
 ### Data Privacy
+
 - **Zero PII Exposure:** Patient names, IDs, and hospital correlations are systematically stripped before payloads hit the Google network. Only raw clinical data (vitals, age, gender, medical history types) is transmitted.
 
 ### System Prompts
+
 The AI is boxed in by rigid system instructions to prevent hallucinations:
+
 1. Must respond with a strict, pre-defined JSON schema.
 2. Expressly forbidden from diagnosing; it may only suggest "findings indicate...".
 3. Must explicitly note if data is insufficient for safe analysis.
 
 ### Performance
+
 To mitigate the cost and latency of LLM calls, we implement an intelligent caching layer in Redis. The cache key acts as an ETag based on the most recent `recordedAt` timestamp for a given patient. If no new vitals are recorded, the AI response is served from RAM in `~5ms`.
 
 ---
