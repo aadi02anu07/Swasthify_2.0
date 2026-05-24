@@ -24,6 +24,12 @@ router.use(verifyToken);
 //      /:patientID/summary before /:patientID/:anything
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Patient Search ────────────────────────────────────────────────────────────
+// Must come BEFORE /:patientID wildcard routes.
+// GET /api/patients/search?name=John  — staff only, searches by patient name
+const patientCtrl = require("../controllers/patientController");
+router.get("/search", staffOnly, patientCtrl.searchPatients);
+
 // ── Patient Overview ──────────────────────────────────────────────────────────
 
 // Full chart overview: demographics + latest vitals + recent history + stats
