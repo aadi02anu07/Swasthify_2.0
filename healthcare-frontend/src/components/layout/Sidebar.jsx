@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
 import { cn } from '@/utils/cn'
+import toast from 'react-hot-toast'
 
 const navItems = {
   doctor: [
@@ -35,6 +36,7 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     clearAuth()
+    toast.success('Logged out successfully')
     navigate('/login')
   }
 

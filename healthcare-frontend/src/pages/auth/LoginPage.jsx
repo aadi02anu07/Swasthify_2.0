@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Heart, Activity, Shield, Users, Loader2 } from 'lucide-react'
 import { loginStaff, loginPatient, loginHospital } from '@/api/auth'
@@ -76,7 +76,7 @@ export default function LoginPage() {
           }} />
         </div>
 
-        <div className="relative z-10 flex items-center gap-3">
+        <Link to="/" className="relative z-10 flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center glow-blue">
             <Heart size={20} className="text-white" />
           </div>
@@ -84,7 +84,7 @@ export default function LoginPage() {
             <p className="font-display font-bold text-white text-xl">Swasthify</p>
             <p className="text-xs text-slate-500">Healthcare Network</p>
           </div>
-        </div>
+        </Link>
 
         <div className="relative z-10 flex-1 flex flex-col justify-center">
           <h1 className="font-display text-5xl font-bold text-white leading-tight mb-4">

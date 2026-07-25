@@ -72,12 +72,12 @@ export default function HomePage() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 h-16"
         style={{ background: 'rgba(2,8,23,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(30,58,95,0.3)' }}>
-        <div className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
             <Heart size={16} className="text-white" />
           </div>
           <span className="font-display font-bold text-white text-lg">Swasthify</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           <Link to="/login" className="text-slate-400 hover:text-slate-200 text-sm font-medium transition-colors px-3 py-1.5">
             Sign in

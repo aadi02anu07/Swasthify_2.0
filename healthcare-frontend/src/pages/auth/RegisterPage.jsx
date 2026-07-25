@@ -76,12 +76,12 @@ export default function RegisterPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="flex items-center gap-3 mb-8">
+        <Link to="/" className="flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
             <Heart size={18} className="text-white" />
           </div>
           <p className="font-display font-bold text-white text-lg">Swasthify</p>
-        </div>
+        </Link>
 
         <h2 className="font-display text-3xl font-bold text-white mb-1">Create account</h2>
         <p className="text-slate-400 text-sm mb-8">Register as a new patient</p>
