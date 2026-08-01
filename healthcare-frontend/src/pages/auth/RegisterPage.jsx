@@ -27,7 +27,11 @@ export default function RegisterPage() {
       const id = res.data.patient?.patientID
       setPatientID(id)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed')
+      toast.error(
+        err.response?.data?.details?.[0]
+          ? `${err.response.data.details[0].field}: ${err.response.data.details[0].message}`
+          : err.response?.data?.message || 'Registration failed'
+      )
     } finally {
       setLoading(false)
     }
