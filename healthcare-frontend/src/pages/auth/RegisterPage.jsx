@@ -27,11 +27,16 @@ export default function RegisterPage() {
       const id = res.data.patient?.patientID
       setPatientID(id)
     } catch (err) {
-      toast.error(
-        err.response?.data?.details?.[0]
-          ? `${err.response.data.details[0].field}: ${err.response.data.details[0].message}`
-          : err.response?.data?.message || 'Registration failed'
-      )
+      const status = err.response?.status
+      const details = err.response?.data?.details
+
+      if (status === 409) {
+        toast.error('This phone number is already registered. Try logging in instead.')
+      } else if (details?.[0]) {
+        toast.error(`${details[0].field}: ${details[0].message}`)
+      } else {
+        toast.error(err.response?.data?.message || 'Registration failed')
+      }
     } finally {
       setLoading(false)
     }
