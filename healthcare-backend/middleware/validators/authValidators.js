@@ -48,7 +48,7 @@ const registerPatientRules = [
     .optional()
     .isIn(["male", "female", "other"])
     .withMessage("Gender must be male, female, or other."),
-  body("phone").optional().isMobilePhone().withMessage("Invalid phone number."),
+  body("phone").optional().isMobilePhone("any").withMessage("Invalid phone number."),
   body("password").isLength({ min: 8 }).withMessage("Password must be at least 8 characters."),
 ];
 

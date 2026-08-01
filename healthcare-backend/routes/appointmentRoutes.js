@@ -23,7 +23,7 @@ router.get("/hospital", listQueryRules, validate, apptCtrl.getHospitalAppointmen
 // Doctor's own schedule — doctor only
 router.get(
   "/schedule",
-  doctorOnly,
+  staffOnly,
   listQueryRules, validate,
   apptCtrl.getDoctorSchedule
 );
