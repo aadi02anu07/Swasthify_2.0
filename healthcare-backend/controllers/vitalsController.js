@@ -53,6 +53,11 @@ const recordVitals = async (req, res, next) => {
  */
 const getLatestVitals = async (req, res, next) => {
   try {
+    // Patients can only view their own vitals
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const result = await vitalsService.getLatestVitals(req.params.patientID);
 
     if (!result.reading) {
@@ -73,6 +78,11 @@ const getLatestVitals = async (req, res, next) => {
  */
 const getVitalsHistory = async (req, res, next) => {
   try {
+    // Patients can only view their own vitals
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const { from, to, limit } = req.query;
     const result = await vitalsService.getVitalsHistory(
       req.params.patientID, { from, to, limit }
@@ -86,6 +96,11 @@ const getVitalsHistory = async (req, res, next) => {
  */
 const getVitalsSummary = async (req, res, next) => {
   try {
+    // Patients can only view their own vitals
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const { from, to } = req.query;
     const result = await vitalsService.getVitalsSummary(
       req.params.patientID, { from, to }

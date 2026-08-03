@@ -30,6 +30,11 @@ const addMedicalRecord = async (req, res, next) => {
  */
 const getMedicalHistory = async (req, res, next) => {
   try {
+    // Patients can only view their own history
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const { type, from, to, page, limit } = req.query;
     const result = await medicalHistoryService.getMedicalHistory(
       req.params.patientID, { type, from, to, page, limit }
@@ -43,6 +48,11 @@ const getMedicalHistory = async (req, res, next) => {
  */
 const getTimelineView = async (req, res, next) => {
   try {
+    // Patients can only view their own timeline
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const result = await medicalHistoryService.getTimelineView(req.params.patientID);
     res.status(200).json(result);
   } catch (err) { next(err); }
@@ -53,6 +63,11 @@ const getTimelineView = async (req, res, next) => {
  */
 const getPatientSummary = async (req, res, next) => {
   try {
+    // Patients can only view their own summary
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const result = await medicalHistoryService.getPatientSummary(req.params.patientID);
     res.status(200).json(result);
   } catch (err) { next(err); }
@@ -63,6 +78,11 @@ const getPatientSummary = async (req, res, next) => {
  */
 const getMedicalRecord = async (req, res, next) => {
   try {
+    // Patients can only view their own records
+    if (req.user.type === "patient" && req.user.patientID !== req.params.patientID) {
+      return res.status(403).json({ error: "You can only view your own records." });
+    }
+
     const { patientID, recordId } = req.params;
     const result = await medicalHistoryService.getMedicalRecord(patientID, recordId);
     res.status(200).json(result);

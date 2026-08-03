@@ -40,7 +40,7 @@ export default function LoginPage() {
       else if (role === 'patient') res = await loginPatient(form.id, form.password)
       else                     res = await loginHospital(form.id, form.password)
 
-      const { accessToken, refreshToken } = res.data
+      const { accessToken } = res.data
       const rawUser = res.data.staff || res.data.patient || res.data.hospital
 
       let user
@@ -48,7 +48,7 @@ export default function LoginPage() {
       else if (role === 'patient')  user = { ...rawUser, type: 'patient' }
       else                          user = { ...rawUser, type: 'hospital', role: 'admin' }
 
-      setAuth(user, accessToken, refreshToken)
+      setAuth(user, accessToken)
       toast.success(`Welcome back, ${user.name}!`)
 
       if (user.type === 'patient') navigate('/patient')

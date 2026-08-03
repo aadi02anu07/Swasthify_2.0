@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { verifyToken, staffOnly, clinicalStaffOnly, doctorOnly } = require("../middleware/authMiddleware");
+const { verifyToken, staffOnly, doctorOnly, clinicalStaffOnly, notPatient } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const apptCtrl = require("../controllers/appointmentController");
 const {
@@ -17,8 +17,8 @@ router.use(verifyToken);
 // Named routes BEFORE wildcard /:id
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Hospital-wide appointment list — staff only
-router.get("/hospital", listQueryRules, validate, apptCtrl.getHospitalAppointments)
+// Hospital-wide appointment list — staff only (patients cannot see this)
+router.get("/hospital", notPatient, listQueryRules, validate, apptCtrl.getHospitalAppointments)
 
 // Doctor's own schedule — doctor only
 router.get(

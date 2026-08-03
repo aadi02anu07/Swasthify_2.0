@@ -18,5 +18,8 @@ export const registerStaff = (data) =>
 export const registerHospital = (data) =>
   api.post('/api/auth/hospital/register', data)
 
+export const rotateRegistrationCode = () =>
+  api.post('/api/auth/hospital/rotate-code')
+
 export const logout = () =>
   api.post('/api/auth/logout')

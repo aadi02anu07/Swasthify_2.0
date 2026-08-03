@@ -72,6 +72,7 @@ export default function AppointmentCard({ appointment, onRefresh }) {
           {notes && <p className="text-xs text-slate-500 mt-2 italic">{notes}</p>}
         </div>
 
+        {/* Staff-only actions */}
         {isStaff && (
           <div className="flex items-center gap-2">
             {canConfirm && (
@@ -84,13 +85,15 @@ export default function AppointmentCard({ appointment, onRefresh }) {
                 <CheckCircle size={13} /> Complete
               </button>
             )}
-            {canCancel && (
-              <button onClick={cancel} className="btn-danger text-xs px-3 py-1.5">
-                <X size={13} /> Cancel
-              </button>
-            )}
           </div>
         )}
+        {/* Cancel — available to both staff and the patient themselves */}
+        {canCancel && (
+          <button onClick={cancel} className="btn-danger text-xs px-3 py-1.5">
+            <X size={13} /> Cancel
+          </button>
+        )}
+
       </div>
     </div>
   )

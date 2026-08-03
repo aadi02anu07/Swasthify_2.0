@@ -120,10 +120,12 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
   if (status) where.status = status;
   if (staffId) where.staffId = staffId;
   if (date) {
-    // Explicit UTC to avoid server timezone shifting the day boundary
+    // IST is UTC+5:30. Using raw UTC midnight shifts the day boundary by 5.5 hours.
+    // Subtract the IST offset so that "2026-08-02" means 00:00–23:59 IST, not UTC.
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
     where.scheduledAt = {
-      gte: new Date(`${date}T00:00:00.000Z`),
-      lte: new Date(`${date}T23:59:59.999Z`),
+      gte: new Date(new Date(`${date}T00:00:00.000Z`).getTime() - IST_OFFSET_MS),
+      lte: new Date(new Date(`${date}T23:59:59.999Z`).getTime() - IST_OFFSET_MS),
     }
   }
 
@@ -155,16 +157,25 @@ const getHospitalAppointments = async (hospitalId, { status, date, staffId, page
  * Get a doctor's personal schedule.
  * Defaults to upcoming 7 days if no date range provided.
  * Cached — doctors check their schedule frequently.
+ *
+ * NOTE: from/to are treated as IST (UTC+5:30) date strings (YYYY-MM-DD).
+ * The DB stores timestamps in UTC, so we shift by -5.5h to align the day boundary.
  */
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30 in milliseconds
+
 const getDoctorSchedule = async (staffId, { from, to } = {}) => {
   const cacheKey = `schedule:${staffId}`;
   const cached = await cacheGet(cacheKey);
   if (cached) return { schedule: cached, fromCache: true };
 
   const now = new Date();
-  const start = from ? new Date(from) : now;
+
+  // Interpret from/to as IST calendar dates — expand to full IST day boundaries
+  const start = from
+    ? new Date(new Date(`${from}T00:00:00.000Z`).getTime() - IST_OFFSET_MS)
+    : now;
   const end = to
-    ? new Date(to)
+    ? new Date(new Date(`${to}T23:59:59.999Z`).getTime() - IST_OFFSET_MS)
     : new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const appointments = await prisma.appointment.findMany({
@@ -180,10 +191,11 @@ const getDoctorSchedule = async (staffId, { from, to } = {}) => {
     },
   });
 
-  // Group by date for easy calendar rendering
+  // Group by IST date (not UTC) — avoids midnight-crossing bugs
   const grouped = {};
   for (const appt of appointments) {
-    const dateKey = appt.scheduledAt.toISOString().slice(0, 10); // YYYY-MM-DD
+    const istDate = new Date(appt.scheduledAt.getTime() + IST_OFFSET_MS);
+    const dateKey = istDate.toISOString().slice(0, 10); // YYYY-MM-DD in IST
     if (!grouped[dateKey]) grouped[dateKey] = [];
     grouped[dateKey].push(appt);
   }

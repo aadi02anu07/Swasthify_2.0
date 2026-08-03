@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../config/db");
+const { generateStaffID } = require("../utils/idGen");
 const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
 const { saveRefreshToken } = require("../config/redis");
 
@@ -8,17 +9,15 @@ const { saveRefreshToken } = require("../config/redis");
  * Staff must provide their hospital's registrationCode to join.
  * This is how we tie staff to a specific hospital without an admin manually adding each person.
  */
-const registerStaff = async ({ staffID, name, role, password, registrationCode }) => {
+const registerStaff = async ({ name, role, password, registrationCode }) => {
   // Validate that the hospital code exists
   const hospital = await prisma.hospital.findUnique({ where: { registrationCode } });
   if (!hospital) {
     throw { status: 404, message: "Invalid hospital registration code." };
   }
 
-  const existing = await prisma.staff.findUnique({ where: { staffID } });
-  if (existing) {
-    throw { status: 409, message: "A staff member with this ID already exists." };
-  }
+  // Auto-generate a unique staffID — staff cannot pick their own to prevent impersonation
+  const staffID = await generateStaffID();
 
   const passwordHash = await bcrypt.hash(password, 12);
 

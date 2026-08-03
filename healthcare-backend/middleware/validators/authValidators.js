@@ -17,9 +17,10 @@ const loginHospitalRules = [
 ];
 
 const registerStaffRules = [
-  body("staffID").trim().notEmpty().withMessage("Staff ID is required."),
   body("name").trim().notEmpty().withMessage("Name is required."),
-  body("role").isIn(["doctor", "nurse", "admin"]).withMessage("Role must be doctor, nurse, or admin."),
+  body("role")
+    .isIn(["doctor", "nurse"])
+    .withMessage("Role must be doctor or nurse. Admin accounts are created by the hospital administrator."),
   body("password")
     .isLength({ min: 8 }).withMessage("Password must be at least 8 characters.")
     .matches(/[A-Z]/).withMessage("Must contain at least one uppercase letter.")

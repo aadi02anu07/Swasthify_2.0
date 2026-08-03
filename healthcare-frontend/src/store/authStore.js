@@ -1,30 +1,43 @@
 import { create } from 'zustand'
 
-const getInitialState = () => {
+/**
+ * Auth Store
+ *
+ * Security model:
+ *  - accessToken  → Zustand memory ONLY (never localStorage — XSS risk)
+ *  - refreshToken → httpOnly cookie set by backend (we never touch it in JS)
+ *  - user         → localStorage only (non-sensitive UI state — name, role, etc.)
+ *
+ * On page refresh the accessToken is gone from memory.
+ * App.jsx calls /api/auth/refresh on mount to silently restore it from the cookie.
+ */
+
+const getInitialUser = () => {
   try {
     const user = JSON.parse(localStorage.getItem('user'))
-    const accessToken = localStorage.getItem('accessToken')
-    const refreshToken = localStorage.getItem('refreshToken')
-    if (user && accessToken) return { user, accessToken, refreshToken }
-  } catch {}
-  return { user: null, accessToken: null, refreshToken: null }
+    return user || null
+  } catch {
+    return null
+  }
 }
 
 const useAuthStore = create((set) => ({
-  ...getInitialState(),
+  user:        getInitialUser(),
+  accessToken: null, // always starts null — restored via /api/auth/refresh on mount
 
-  setAuth: (user, accessToken, refreshToken) => {
+  setAuth: (user, accessToken) => {
+    // Only persist the user object — NOT the token
     localStorage.setItem('user', JSON.stringify(user))
-    localStorage.setItem('accessToken', accessToken)
-    localStorage.setItem('refreshToken', refreshToken)
-    set({ user, accessToken, refreshToken })
+    set({ user, accessToken })
+  },
+
+  setAccessToken: (accessToken) => {
+    set({ accessToken })
   },
 
   clearAuth: () => {
     localStorage.removeItem('user')
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    set({ user: null, accessToken: null, refreshToken: null })
+    set({ user: null, accessToken: null })
   },
 }))
 

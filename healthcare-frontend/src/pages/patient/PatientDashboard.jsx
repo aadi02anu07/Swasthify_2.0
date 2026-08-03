@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Activity, Calendar, Clock, ChevronRight, Loader2, Heart } from 'lucide-react'
 import { usePatientData } from '@/hooks/usePatientData'
 import { useVitalsChart } from '@/hooks/useVitalsChart'
-import { getPatientAppointments } from '@/api/appointments'
+import { getPatientAppointments, cancelAppointment } from '@/api/appointments'
 import { getLatestVitals } from '@/api/vitals'
 import useAuthStore from '@/store/authStore'
 import VitalsLatestCard from '@/components/vitals/VitalsLatestCard'
@@ -17,6 +17,8 @@ import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import { PageLoader } from '@/components/ui/Spinner'
 import { fDate, fAge, fTime } from '@/utils/formatters'
+import toast from 'react-hot-toast'
+import { X } from 'lucide-react'
 
 const StatCard = ({ icon: Icon, label, value, color, delay, to }) => {
   const inner = (
@@ -62,6 +64,17 @@ export default function PatientDashboard() {
       .catch(() => {})
       .finally(() => setApptLoading(false))
   }, [patientID])
+
+  const handleCancel = async (id) => {
+    if (!confirm('Cancel this appointment?')) return
+    try {
+      await cancelAppointment(id)
+      toast.success('Appointment cancelled')
+      setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelled' } : a))
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel')
+    }
+  }
 
   if (loading) return <PageLoader />
 
@@ -148,16 +161,27 @@ export default function PatientDashboard() {
             <div className="space-y-2">
               {appointments.slice(0, 5).map((a) => (
                 <div key={a.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-navy-700/20">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-slate-300 text-sm font-medium truncate">{a.reason || 'Appointment'}</p>
                     <p className="text-slate-500 text-xs mt-0.5">
                       {fDate(a.scheduledAt)} · {fTime(a.scheduledAt)}
                       {a.staff?.name && ` · ${a.staff.name}`}
                     </p>
                   </div>
-                  <Badge variant={a.status === 'pending' ? 'amber' : a.status === 'confirmed' ? 'blue' : a.status === 'completed' ? 'emerald' : 'rose'}>
-                    {a.status}
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={a.status === 'pending' ? 'amber' : a.status === 'confirmed' ? 'blue' : a.status === 'completed' ? 'emerald' : 'rose'}>
+                      {a.status}
+                    </Badge>
+                    {(a.status === 'pending' || a.status === 'confirmed') && (
+                      <button
+                        onClick={() => handleCancel(a.id)}
+                        className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title="Cancel appointment"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

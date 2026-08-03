@@ -5,7 +5,7 @@ import {
   Loader2, RefreshCw, UserPlus, Eye, EyeOff, Copy, Check
 } from 'lucide-react'
 import { getHospitalAppointments } from '@/api/appointments'
-import { registerStaff, registerPatient } from '@/api/auth'
+import { registerStaff, registerPatient, rotateRegistrationCode } from '@/api/auth'
 import { BLOOD_GROUPS } from '@/utils/constants'
 import useAuthStore from '@/store/authStore'
 import AppointmentCard from '@/components/appointments/AppointmentCard'
@@ -28,30 +28,41 @@ const TABS = [
 // ── Register Staff Modal ─────────────────────────────────────────────────────
 
 const staffSchema = z.object({
-  staffID:  z.string().min(2, 'Required'),
   name:     z.string().min(2, 'Required'),
+  // Admin allowed here because this form is only accessible to hospital admins
   role:     z.enum(['doctor', 'nurse', 'admin']),
   password: z.string().min(6, 'Min 6 characters'),
 })
 
-function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
+function RegisterStaffModal({ isOpen, onClose, registrationCode, onCodeRotated }) {
   const [showPwd, setShowPwd]   = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
+  const [rotating, setRotating] = useState(false)
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(staffSchema),
     defaultValues: { role: 'doctor' },
   })
 
+  const [generatedID, setGeneratedID] = useState(null)
+  const [idCopied, setIdCopied] = useState(false)
+
   const onSubmit = async (data) => {
     try {
-      await registerStaff({ ...data, registrationCode })
+      const res = await registerStaff({ ...data, registrationCode })
+      const staffID = res.data?.staff?.staffID
+      setGeneratedID(staffID)
       toast.success(`${data.name} registered as ${data.role}`)
       reset()
-      onClose()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed')
     }
+  }
+
+  const handleClose = () => {
+    setGeneratedID(null)
+    setIdCopied(false)
+    onClose()
   }
 
   const copyCode = () => {
@@ -61,60 +72,106 @@ function RegisterStaffModal({ isOpen, onClose, registrationCode }) {
     setTimeout(() => setCodeCopied(false), 2000)
   }
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Register New Staff" size="md">
-      <div className="mb-5 p-4 rounded-xl"
-        style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-        <p className="text-xs text-slate-500 mb-1">Hospital Registration Code</p>
-        <div className="flex items-center justify-between gap-2">
-          <p className="mono text-blue-400 font-bold text-lg">{registrationCode || '—'}</p>
-          <button onClick={copyCode} className="btn-secondary text-xs px-2 py-1">
-            {codeCopied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
-          </button>
-        </div>
-        <p className="text-xs text-slate-500 mt-1">Staff can also self-register using this code at the login page</p>
-      </div>
+  const handleRotate = async () => {
+    if (!window.confirm('Are you sure? The old registration code will stop working immediately. All existing staff links must be updated.')) return
+    setRotating(true)
+    try {
+      const res = await rotateRegistrationCode()
+      onCodeRotated(res.data.registrationCode)
+      toast.success('Registration code rotated. Share the new code with your staff.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to rotate code')
+    } finally {
+      setRotating(false)
+    }
+  }
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Staff ID *</label>
-            <input {...register('staffID')} placeholder="DOC-002" className="input-field mono" />
-            {errors.staffID && <p className="text-xs text-rose-400 mt-1">{errors.staffID.message}</p>}
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Register New Staff" size="md">
+      {/* Show generated staffID after success */}
+      {generatedID ? (
+        <div className="text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
+            <Check size={24} className="text-emerald-400" />
           </div>
-          <div>
-            <label className="label">Role *</label>
-            <select {...register('role')} className="select-field">
-              <option value="doctor">Doctor</option>
-              <option value="nurse">Nurse</option>
-              <option value="admin">Admin</option>
-            </select>
+          <p className="text-slate-300 font-medium">Staff registered successfully!</p>
+          <div className="p-4 rounded-xl" style={{ background: 'rgba(37,99,235,0.08)', border: '2px dashed rgba(59,130,246,0.3)' }}>
+            <p className="text-xs text-slate-500 mb-1">Assigned Staff ID — share this with the staff member</p>
+            <p className="mono text-2xl font-bold text-blue-400">{generatedID}</p>
           </div>
-        </div>
-        <div>
-          <label className="label">Full Name *</label>
-          <input {...register('name')} placeholder="Dr. Jane Smith" className="input-field" />
-          {errors.name && <p className="text-xs text-rose-400 mt-1">{errors.name.message}</p>}
-        </div>
-        <div>
-          <label className="label">Password *</label>
-          <div className="relative">
-            <input {...register('password')} type={showPwd ? 'text' : 'password'}
-              placeholder="Min 6 characters" className="input-field pr-10" />
-            <button type="button" onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-              {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+          <div className="flex gap-3">
+            <button onClick={() => { navigator.clipboard.writeText(generatedID); setIdCopied(true); setTimeout(() => setIdCopied(false), 2000) }} className="btn-secondary flex-1">
+              {idCopied ? <><Check size={13} /> Copied!</> : <><Copy size={13} /> Copy ID</>}
             </button>
+            <button onClick={handleClose} className="btn-primary flex-1">Done</button>
           </div>
-          {errors.password && <p className="text-xs text-rose-400 mt-1">{errors.password.message}</p>}
         </div>
-        <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-            {isSubmitting ? <><Spinner size="sm" /> Registering…</> : <><UserPlus size={14} /> Register Staff</>}
-          </button>
-          <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-        </div>
-      </form>
+      ) : (
+        <>
+          <div className="mb-5 p-4 rounded-xl"
+            style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <p className="text-xs text-slate-500 mb-1">Hospital Registration Code</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="mono text-blue-400 font-bold text-lg">{registrationCode || '—'}</p>
+              <div className="flex gap-2">
+                <button onClick={copyCode} className="btn-secondary text-xs px-2 py-1">
+                  {codeCopied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+                </button>
+                <button
+                  onClick={handleRotate}
+                  disabled={rotating}
+                  className="text-xs px-2 py-1 rounded-lg font-medium transition-colors"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                  title="Invalidate current code and generate a new one"
+                >
+                  {rotating ? 'Rotating…' : '⟳ Rotate'}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Staff can also self-register using this code at the login page</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <Check size={14} className="text-emerald-400 shrink-0" />
+              <p className="text-xs text-slate-400">Staff ID will be auto-generated (e.g. <span className="mono text-blue-400">STF-2026-0001</span>)</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Full Name *</label>
+                <input {...register('name')} placeholder="Dr. Jane Smith" className="input-field" />
+                {errors.name && <p className="text-xs text-rose-400 mt-1">{errors.name.message}</p>}
+              </div>
+              <div>
+                <label className="label">Role *</label>
+                <select {...register('role')} className="select-field">
+                  <option value="doctor">Doctor</option>
+                  <option value="nurse">Nurse</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="label">Password *</label>
+              <div className="relative">
+                <input {...register('password')} type={showPwd ? 'text' : 'password'}
+                  placeholder="Min 6 characters" className="input-field pr-10" />
+                <button type="button" onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-xs text-rose-400 mt-1">{errors.password.message}</p>}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
+                {isSubmitting ? <><Spinner size="sm" /> Registering…</> : <><UserPlus size={14} /> Register Staff</>}
+              </button>
+              <button type="button" onClick={handleClose} className="btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </>
+      )}
     </Modal>
   )
 }
@@ -271,6 +328,7 @@ export default function HospitalDashboard() {
   // Staff admins have type:"staff", role:"admin" and hospitalId field
   // Either way the backend reads hospitalId from the JWT — we just need to pass the token (axios does this automatically)
   const registrationCode = user?.registrationCode || user?.hospital?.registrationCode
+  const [currentCode, setCurrentCode] = useState(registrationCode)
 
   const fetchStats = useCallback(async () => {
     try {
@@ -419,7 +477,8 @@ export default function HospitalDashboard() {
       <RegisterStaffModal
         isOpen={staffModalOpen}
         onClose={() => setStaffModalOpen(false)}
-        registrationCode={registrationCode}
+        registrationCode={currentCode}
+        onCodeRotated={(newCode) => setCurrentCode(newCode)}
       />
       <RegisterPatientModal
         isOpen={patientModalOpen}

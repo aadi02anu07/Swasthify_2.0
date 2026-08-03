@@ -48,11 +48,6 @@ const createAppointment = async (req, res, next) => {
  */
 const getHospitalAppointments = async (req, res, next) => {
   try {
-    // Patients cannot access this endpoint
-    if (req.user.type === "patient") {
-      return res.status(403).json({ error: "Access denied." })
-    }
-
     const { status, date, staffId, page, limit } = req.query
 
     // Hospital account: id IS the hospitalId

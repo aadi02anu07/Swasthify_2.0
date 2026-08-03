@@ -82,6 +82,14 @@ const sameHospitalOnly = (req, res, next) => {
   next();
 };
 
+/** Anyone who is NOT a patient (staff + hospital accounts) */
+const notPatient = (req, res, next) => {
+  if (req.user?.type === "patient") {
+    return res.status(403).json({ error: "Access denied." });
+  }
+  next();
+};
+
 module.exports = {
   verifyToken,
   staffOnly,
@@ -89,5 +97,6 @@ module.exports = {
   clinicalStaffOnly,
   hospitalAdminOnly,
   patientOnly,
+  notPatient,
   sameHospitalOnly,
 };

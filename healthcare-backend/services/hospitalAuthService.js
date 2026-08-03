@@ -44,6 +44,14 @@ const loginHospital = async ({ email, password }) => {
   const match = await bcrypt.compare(password, hospital.passwordHash);
   if (!match) throw { status: 401, message: "Invalid credentials." };
 
+  // Block unverified hospitals — verified is set manually by the platform admin
+  if (!hospital.verified) {
+    throw {
+      status: 403,
+      message: "Your hospital account is pending verification. Please contact support at aadi02anu07@gmail.com.",
+    };
+  }
+
   const payload = {
     id:   hospital.id,
     type: "hospital",
@@ -67,4 +75,28 @@ const loginHospital = async ({ email, password }) => {
   };
 };
 
-module.exports = { registerHospital, loginHospital };
+/**
+ * Rotate the hospital's registration code.
+ * Generates a new unique code, persists it, and returns it.
+ * The old code is immediately invalidated — any staff trying to register with it
+ * will receive "Invalid hospital registration code."
+ */
+const rotateRegistrationCode = async (hospitalId) => {
+  // Generate a new unique code (collision loop for safety)
+  let newCode;
+  let taken = true;
+  while (taken) {
+    newCode = generateRegistrationCode();
+    taken = await prisma.hospital.findUnique({ where: { registrationCode: newCode } });
+  }
+
+  const hospital = await prisma.hospital.update({
+    where: { id: hospitalId },
+    data:  { registrationCode: newCode },
+    select: { id: true, name: true, registrationCode: true },
+  });
+
+  return hospital;
+};
+
+module.exports = { registerHospital, loginHospital, rotateRegistrationCode };

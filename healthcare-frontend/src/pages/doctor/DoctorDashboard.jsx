@@ -233,7 +233,8 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true)
   const [bookOpen, setBookOpen] = useState(false)
 
-  const today = new Date().toISOString().split('T')[0]
+  // Calculate today's date in IST (UTC+5:30) — avoids off-by-one at day boundaries
+  const today = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const fetchData = useCallback(async () => {
     setLoading(true)

@@ -15,6 +15,17 @@ const generatePatientID = async () => {
 };
 
 /**
+ * Generates a human-readable staff ID: STF-2025-0001
+ * Auto-generated so staff can't impersonate each other by picking their own ID.
+ */
+const generateStaffID = async () => {
+  const year  = new Date().getFullYear();
+  const count = await prisma.staff.count();
+  const padded = String(count + 1).padStart(4, "0");
+  return `STF-${year}-${padded}`;
+};
+
+/**
  * Generates a registration code for a hospital: HOSP-XXXXXX (random alphanumeric)
  * Staff use this code to register under the hospital.
  */
@@ -27,4 +38,4 @@ const generateRegistrationCode = () => {
   return code;
 };
 
-module.exports = { generatePatientID, generateRegistrationCode };
+module.exports = { generatePatientID, generateStaffID, generateRegistrationCode };

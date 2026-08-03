@@ -2,6 +2,7 @@ require("dotenv").config();
 const express      = require("express");
 const http         = require("http");
 const cors         = require("cors");
+const cookieParser = require("cookie-parser");
 const rateLimit    = require("express-rate-limit");
 
 const prisma        = require("./config/db");
@@ -23,6 +24,7 @@ app.set("io", io); // controllers access via req.app.get("io")
 
 // ── Core Middleware ───────────────────────────────────────────────────────────
 app.use(express.json());
+app.use(cookieParser()); // required to read req.cookies (httpOnly refresh token)
 
 // CORS: allow both Vercel (prod) and localhost (dev).
 // A callback is required when credentials:true — you cannot use a wildcard with credentials.
@@ -57,7 +59,16 @@ const authLimiter = rateLimit({
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth",     authLimiter, authRoutes);
-app.use("/api/patients", patientRoutes);
+
+// Stricter limiter for patient data — prevents bulk enumeration of patient records
+// by a bad actor with a valid staff token (60 req / 15 min vs. global 100)
+const patientDataLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max:      60,
+  message:  { error: "Too many patient data requests, please try again later." },
+});
+app.use("/api/patients", patientDataLimiter, patientRoutes);
+
 app.use("/api/ai",           aiRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/reports",      reportRoutes);

@@ -39,6 +39,18 @@ const loginHospital = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// Rotate the hospital's registration code — invalidates the old one immediately
+const rotateRegistrationCode = async (req, res, next) => {
+  try {
+    const hospitalId = req.user.id; // hospital-level token: id IS the hospitalId
+    const hospital = await hospitalAuthService.rotateRegistrationCode(hospitalId);
+    res.status(200).json({
+      message: "Registration code rotated successfully. Share the new code with your staff.",
+      registrationCode: hospital.registrationCode,
+    });
+  } catch (err) { next(err); }
+};
+
 // ── Staff ─────────────────────────────────────────────────────────────────────
 
 const registerStaff = async (req, res, next) => {
@@ -128,7 +140,7 @@ const logout = async (req, res, next) => {
 };
 
 module.exports = {
-  registerHospital, loginHospital,
+  registerHospital, loginHospital, rotateRegistrationCode,
   registerStaff,    loginStaff,
   registerPatient,  loginPatient,
   refreshToken,     logout,
